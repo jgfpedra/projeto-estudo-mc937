@@ -11,7 +11,20 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
 
-add_executable(projeto-final main.cpp)
+file(GLOB_RECURSE SOURCES
+    "src/**/*.cpp"
+)
+
+# Adicionar diretórios de shaders
+file(GLOB SHADERS
+    "shaders/*.glsl"
+)
+
+add_executable(projeto-final
+    ${SOURCES}
+    ${SHADERS}
+    main.cpp
+)
 
 INCLUDE_DIRECTORIES( ${OPENGL_INCLUDE_DIR} ${GLFW_INCLUDE_DIRS} )
 

@@ -49,6 +49,48 @@ cmake_ninja_workdir = /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/projet
 
 build cmake_object_order_depends_target_projeto-final: phony || .
 
+build CMakeFiles/projeto-final.dir/src/animation/animation.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/src/animation/animation.cpp || cmake_object_order_depends_target_projeto-final
+  CONFIG = Debug
+  DEP_FILE = CMakeFiles/projeto-final.dir/src/animation/animation.cpp.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++23 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles/projeto-final.dir
+  OBJECT_FILE_DIR = CMakeFiles/projeto-final.dir/src/animation
+
+build CMakeFiles/projeto-final.dir/src/core/objloader.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/src/core/objloader.cpp || cmake_object_order_depends_target_projeto-final
+  CONFIG = Debug
+  DEP_FILE = CMakeFiles/projeto-final.dir/src/core/objloader.cpp.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++23 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles/projeto-final.dir
+  OBJECT_FILE_DIR = CMakeFiles/projeto-final.dir/src/core
+
+build CMakeFiles/projeto-final.dir/src/core/window.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/src/core/window.cpp || cmake_object_order_depends_target_projeto-final
+  CONFIG = Debug
+  DEP_FILE = CMakeFiles/projeto-final.dir/src/core/window.cpp.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++23 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles/projeto-final.dir
+  OBJECT_FILE_DIR = CMakeFiles/projeto-final.dir/src/core
+
+build CMakeFiles/projeto-final.dir/src/graphics/mesh.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/src/graphics/mesh.cpp || cmake_object_order_depends_target_projeto-final
+  CONFIG = Debug
+  DEP_FILE = CMakeFiles/projeto-final.dir/src/graphics/mesh.cpp.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++23 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles/projeto-final.dir
+  OBJECT_FILE_DIR = CMakeFiles/projeto-final.dir/src/graphics
+
+build CMakeFiles/projeto-final.dir/src/graphics/shaders.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/src/graphics/shaders.cpp || cmake_object_order_depends_target_projeto-final
+  CONFIG = Debug
+  DEP_FILE = CMakeFiles/projeto-final.dir/src/graphics/shaders.cpp.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++23 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles/projeto-final.dir
+  OBJECT_FILE_DIR = CMakeFiles/projeto-final.dir/src/graphics
+
+build CMakeFiles/projeto-final.dir/src/lighting/lighting.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/src/lighting/lighting.cpp || cmake_object_order_depends_target_projeto-final
+  CONFIG = Debug
+  DEP_FILE = CMakeFiles/projeto-final.dir/src/lighting/lighting.cpp.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++23 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles/projeto-final.dir
+  OBJECT_FILE_DIR = CMakeFiles/projeto-final.dir/src/lighting
+
 build CMakeFiles/projeto-final.dir/main.cpp.o: CXX_COMPILER__projeto-final_unscanned_Debug /home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/main.cpp || cmake_object_order_depends_target_projeto-final
   CONFIG = Debug
   DEP_FILE = CMakeFiles/projeto-final.dir/main.cpp.o.d
@@ -64,7 +106,7 @@ build CMakeFiles/projeto-final.dir/main.cpp.o: CXX_COMPILER__projeto-final_unsca
 #############################################
 # Link the executable projeto-final
 
-build projeto-final: CXX_EXECUTABLE_LINKER__projeto-final_Debug CMakeFiles/projeto-final.dir/main.cpp.o | /usr/lib/libglfw.so.3.4 /usr/lib/libGLEW.so /usr/lib/libGLX.so /usr/lib/libOpenGL.so
+build projeto-final: CXX_EXECUTABLE_LINKER__projeto-final_Debug CMakeFiles/projeto-final.dir/src/animation/animation.cpp.o CMakeFiles/projeto-final.dir/src/core/objloader.cpp.o CMakeFiles/projeto-final.dir/src/core/window.cpp.o CMakeFiles/projeto-final.dir/src/graphics/mesh.cpp.o CMakeFiles/projeto-final.dir/src/graphics/shaders.cpp.o CMakeFiles/projeto-final.dir/src/lighting/lighting.cpp.o CMakeFiles/projeto-final.dir/main.cpp.o | /usr/lib/libglfw.so.3.4 /usr/lib/libGLEW.so /usr/lib/libGLX.so /usr/lib/libOpenGL.so
   CONFIG = Debug
   DEP_FILE = CMakeFiles/projeto-final.dir/link.d
   FLAGS = -DQT_QML_DEBUG -g
