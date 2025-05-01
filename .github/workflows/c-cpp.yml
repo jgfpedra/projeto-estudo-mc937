@@ -1,0 +1,30 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "development" ]
+  pull_request:
+    branches: [ "development" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # Instalar dependências do OpenGL
+    - name: Install OpenGL dependencies
+      run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libglu1-mesa-dev
+
+    # Configuração com CMake
+    - name: configure
+      run: cmake -S . -B build
+
+    # Compilação com CMake
+    - name: build
+      run: cmake --build build
+
+    # Rodar testes
+    - name: test
+      run: ctest --build-dir build
