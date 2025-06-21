@@ -5,10 +5,10 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <core/window.h>
-#include <core/objloader.h>
-#include <graphics/shaders.h>
-#include <graphics/mesh.h>
+#include "core/window.h"
+#include "core/objloader.h"
+#include "graphics/shaders.h"
+#include "graphics/mesh.h"
 
 int main(int argc, char* argv[]) {
     GLFWwindow* window;

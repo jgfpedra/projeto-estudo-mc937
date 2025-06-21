@@ -15,24 +15,25 @@ file(GLOB_RECURSE SOURCES
     "src/**/*.cpp"
 )
 
-# Adicionar diretórios de shaders
 file(GLOB SHADERS
     "shaders/*.glsl"
 )
 
 add_executable(projeto-final
     ${SOURCES}
-    ${SHADERS}
     main.cpp
 )
 
 INCLUDE_DIRECTORIES( ${OPENGL_INCLUDE_DIR} ${GLFW_INCLUDE_DIRS} )
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
 target_sources(projeto-final
   PRIVATE
     main.cpp
     main.cpp
 )
+
+target_include_directories(projeto-final PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(${PROJECT_NAME} OpenGL::GL)
 target_link_libraries(${PROJECT_NAME} glfw)
