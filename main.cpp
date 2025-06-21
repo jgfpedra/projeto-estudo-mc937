@@ -4,14 +4,35 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include "core/window.h"
+#include "window/window.h"
 #include "core/model.h"
-#include "graphics/shaders.h"
-#include "graphics/mesh.h"
-#include "graphics/camera.h"
-#include "graphics/ilumination.h"
-#include "core/animation.h"
+#include "physics/animation.h"
 #include "core/objexporter.h"
+#include "graphics/shaders.h"
+#include "graphics/light.h"
+#include "graphics/camera.h"
+#include "graphics/mesh.h"
+
+void updatePhysicsAll(std::vector<ModelPhysics>& physicsModels, float dt, float gravity, float groundY) {
+    for (auto& pm : physicsModels)
+        updatePhysics(pm, dt, gravity, groundY);
+}
+
+void updateModelsFromPhysics(std::vector<ModelData>& models, const std::vector<ModelPhysics>& physicsModels) {
+    for (size_t i = 0; i < models.size(); ++i) {
+        for (size_t j = 0; j < models[i].vertices.size(); ++j)
+            models[i].vertices[j] = physicsModels[i].vertices[j].position;
+        glBindBuffer(GL_ARRAY_BUFFER, models[i].VBO_vertices);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, models[i].vertices.size() * sizeof(glm::vec3), models[i].vertices.data());
+    }
+}
+
+void exportAllModels(const std::vector<ModelData>& models, int frame) {
+    for (size_t i = 0; i < models.size(); ++i) {
+        std::string filename = "anim_model" + std::to_string(i+1) + "_frame_" + std::to_string(frame) + ".obj";
+        exportObjFrame(filename, models[i].vertices, models[i].normals, models[i].faces);
+    }
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
@@ -75,10 +96,7 @@ int main(int argc, char* argv[]) {
         glm::vec3 viewPos = glm::vec3(0, 0, 5); // Camera position
 
         // Atualiza física e AABB
-        for (int i = 0; i < 3; ++i) {
-            updatePhysics(physicsModels[i], dt, gravity, groundY);
-            updateAABB(physicsModels[i]);
-        }
+        updatePhysicsAll(physicsModels, dt, gravity, groundY);
 
         // Exemplo de detecção de colisão entre modelos
         for (int i = 1; i < 3; ++i) // só modelos 1 e 2 (índices 1 e 2)
@@ -92,12 +110,7 @@ int main(int argc, char* argv[]) {
                 }
 
         // Atualiza os vértices dos modelos para desenhar
-        for (int i = 0; i < 3; ++i) {
-            for (size_t j = 0; j < models[i].vertices.size(); ++j)
-                models[i].vertices[j] = physicsModels[i].vertices[j].position;
-            glBindBuffer(GL_ARRAY_BUFFER, models[i].VBO_vertices);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, models[i].vertices.size() * sizeof(glm::vec3), models[i].vertices.data());
-        }
+        updateModelsFromPhysics(models, physicsModels);
 
         for (int i = 0; i < 3; ++i) {
             setPhongUniforms(shaderProgram, light, materials[i], viewPos);
@@ -106,10 +119,7 @@ int main(int argc, char* argv[]) {
         }
 
         // Salvar a animação dos três modelos a cada frame
-        for (int i = 0; i < 3; ++i) {
-            std::string filename = "anim_model" + std::to_string(i+1) + "_frame_" + std::to_string(frame) + ".obj";
-            exportObjFrame(filename, models[i].vertices, models[i].normals, models[i].faces);
-        }
+        exportAllModels(models, frame);
         frame++;
 
         glfwSwapBuffers(window);

@@ -1,4 +1,4 @@
-#include "graphics/ilumination.h"
+#include "graphics/light.h"
 
 void setPhongUniforms(GLuint shaderProgram, const PhongLight& light, const PhongMaterial& material, const glm::vec3& viewPos) {
     glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, &light.position[0]);

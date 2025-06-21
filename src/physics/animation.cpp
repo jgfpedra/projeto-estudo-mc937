@@ -1,4 +1,4 @@
-#include "core/animation.h"
+#include "physics/animation.h"
 
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
     for (auto& v : model.vertices) {
