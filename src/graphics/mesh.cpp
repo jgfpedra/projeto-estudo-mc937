@@ -5,12 +5,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
+#include "core/model.h"
 
-void setupBuffers(GLuint& VAO, GLuint& VBO_vertices, GLuint& VBO_normals, GLuint& EBO,
-                  const std::vector<glm::vec3>& vertices,
-                  const std::vector<glm::vec3>& normals,
-                  const std::vector<unsigned int>& indices);
-void renderScene(GLuint& shaderProgram, GLuint VAO, GLuint EBO, GLuint facesCount, GLFWwindow* window);
+void drawModel(const ModelData& model, GLuint shaderProgram, const glm::mat4& modelMatrix) {
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
+    glBindVertexArray(model.VAO);
+    glDrawElements(GL_TRIANGLES, model.faces.size(), GL_UNSIGNED_INT, 0);
+}
 
 void setupBuffers(GLuint& VAO, GLuint& VBO_vertices, GLuint& VBO_normals, GLuint& EBO, const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const std::vector<unsigned int>& indices) {
     glGenVertexArrays(1, &VAO);
