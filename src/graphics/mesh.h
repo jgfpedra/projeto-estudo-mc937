@@ -3,6 +3,7 @@
 #include <string>
 #include <glm/glm.hpp>
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 #include "core/objloader.h"
 
 void drawModel(const ModelData& model, GLuint shaderProgram, const glm::mat4& modelMatrix);

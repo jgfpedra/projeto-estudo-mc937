@@ -17,8 +17,8 @@ std::string loadShaderSource(const char* filepath) {
 }
 
 void configureShaders(GLuint& vs, GLuint& fs, GLuint& shaderProgram) {
-    std::string vertexCode = loadShaderSource("shaders/vertex_shader.glsl");
-    std::string fragmentCode = loadShaderSource("shaders/fragment_shader.glsl");
+    std::string vertexCode = loadShaderSource("../shaders/vertex_shader.glsl");
+    std::string fragmentCode = loadShaderSource("../shaders/fragment_shader.glsl");
     const char* vertex_shader = vertexCode.c_str();
     const char* fragment_shader = fragmentCode.c_str();
 
