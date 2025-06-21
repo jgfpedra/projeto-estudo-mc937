@@ -9,6 +9,7 @@
 #include "graphics/shaders.h"
 #include "graphics/mesh.h"
 #include "graphics/camera.h"
+#include "graphics/ilumination.h"
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
@@ -35,12 +36,20 @@ int main(int argc, char* argv[]) {
             return -1;
         }
     }
+    PhongLight light = { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f) };
+    std::vector<PhongMaterial> materials = {
+        { glm::vec3(1.0f, 0.5f, 0.5f), 0.1f, 0.5f, 32 }, // vermelho claro
+        { glm::vec3(0.5f, 1.0f, 0.5f), 0.2f, 0.7f, 16 }, // verde claro
+        { glm::vec3(0.5f, 0.5f, 1.0f), 0.3f, 1.0f, 64 }  // azul claro
+    };
     while (!glfwWindowShouldClose(window)) {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
         setViewProjection(shaderProgram, width, height);
+        glm::vec3 viewPos = glm::vec3(0, 0, 5); // Camera position
 
         for (int i = 0; i < 3; ++i) {
+            setPhongUniforms(shaderProgram, light, materials[i], viewPos);
             glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3((i-1)*2.0f, 0.0f, 0.0f));
             drawModel(models[i], shaderProgram, model);
         }
