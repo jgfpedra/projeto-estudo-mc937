@@ -38,26 +38,20 @@ void exportAllModels(const std::vector<ModelData>& models, int frame) {
 }
 
 void handleCollisions(std::vector<ModelPhysics>& physicsModels, const float restitution[]) {
-    // Only check collision between Model 1 (green, rigid) and Model 2 (blue, rubber)
     ModelPhysics& greenRigid = physicsModels[1];
     ModelPhysics& blueRubber = physicsModels[2];
 
     if (checkAABBCollision(greenRigid, blueRubber)) {
-        std::cout << "Collision detected between green (rigid) and blue (rubber)" << std::endl;
-
-        // Response for the blue (rubber) model - it bounces up
         glm::vec3 blueIncomingVel(0.0f);
         if (!blueRubber.vertices.empty()) {
             for(const auto& v : blueRubber.vertices) blueIncomingVel += v.velocity;
             blueIncomingVel /= (float)blueRubber.vertices.size();
         }
 
-        // Apply bounce for blue rubber using its restitution value
         for (auto& v : blueRubber.vertices) {
-            if (!v.fixed) v.velocity.y *= -restitution[2]; // Use restitution[2] for blue model
+            if (!v.fixed) v.velocity.y *= -restitution[2];
         }
 
-        // Response for the green (rigid) model - it gets pushed down
         glm::vec3 greenAvgVel(0.0f);
         if (!greenRigid.vertices.empty()) {
             for(const auto& v : greenRigid.vertices) greenAvgVel += v.velocity;
@@ -66,15 +60,12 @@ void handleCollisions(std::vector<ModelPhysics>& physicsModels, const float rest
 
         float pushFactor = 0.5f; 
 
-        // Update green rigid body's average velocity for downward push
-        if (blueIncomingVel.y < 0) { // Ensure blue was moving downwards
-             greenAvgVel.y += (blueIncomingVel.y * pushFactor); // Add negative velocity
+        if (blueIncomingVel.y < 0) {
+             greenAvgVel.y += (blueIncomingVel.y * pushFactor);
         }
        
-        // Apply green's own restitution (0.5 for rigid body)
-        greenAvgVel.y *= -restitution[1]; // Use restitution[1] for green model
+        greenAvgVel.y *= -restitution[1];
 
-        // Distribute this new average velocity back to all vertices of the green rigid body
         for (auto& v : greenRigid.vertices) {
             if (!v.fixed) v.velocity.y = greenAvgVel.y;
         }
@@ -90,13 +81,8 @@ void drawAllModels(
 {
     for (int i = 0; i < 3; ++i) {
         setPhongUniforms(shaderProgram, light, materials[i], viewPos);
-        
-        glm::mat4 model = glm::mat4(1.0f); // Identity matrix
-        // The models' positions are now directly updated by physics
-        // So, we only need to apply scaling if desired.
-        // model = glm::scale(model, glm::vec3(1.0f)); // Example scaling if needed
-
-        drawModel(models[i], shaderProgram, model); // Pass the identity/scale matrix
+        glm::mat4 model = glm::mat4(1.0f);
+        drawModel(models[i], shaderProgram, model);
     }
 }
 
@@ -118,9 +104,9 @@ void updateAllPhysics(
     const float restitution[3],
     std::function<void(ModelPhysics&, float, float, float, float)> updateRigidBody)
 {
-    updatePhysics(physicsModels[0], dt, gravity, groundY, restitution[0]); // tecido
-    updateRigidBody(physicsModels[1], dt, gravity, groundY, restitution[1]); // rígido
-    updatePhysics(physicsModels[2], dt, gravity, groundY, restitution[2]); // borracha
+    updatePhysics(physicsModels[0], dt, gravity, groundY, restitution[0]);
+    updateRigidBody(physicsModels[1], dt, gravity, groundY, restitution[1]);
+    updatePhysics(physicsModels[2], dt, gravity, groundY, restitution[2]);
 }
 
 auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
@@ -136,7 +122,6 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
     float windStrength = 0.5f * sin(glfwGetTime());
     glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
 
-    // Calcule minY ANTES de usar
     float minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) minY = v.position.y;
@@ -149,21 +134,18 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
     avgVel += glm::vec3(0.0f, -gravity, 0.0f) * dt;
     glm::vec3 proposedPos = avgPos + avgVel * dt;
 
-    // Calcula o menor Y dos vértices se mover para proposedPos
     minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         float y = proposedPos.y + (v.position.y - avgPos.y);
         if (y < minY) minY = y;
     }
 
-    // Se algum vértice ficaria abaixo do chão, ajusta o centro para que o menor Y fique em groundY
     if (minY < groundY) {
         float delta = groundY - minY;
         proposedPos.y += delta;
         avgVel.y *= -restitution;
     }
 
-    // Aplica o movimento corrigido
     for (auto& v : model.vertices) {
         v.position += (proposedPos - avgPos);
         v.velocity = avgVel;
@@ -247,7 +229,6 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to load OBJ file: " << argv[i+1] << std::endl;
             return -1;
         }
-        // Adicione este bloco para debug:
         std::cout << "Modelo " << i << " (" << argv[i+1] << "): "
                 << models[i].vertices.size() << " vértices, "
                 << models[i].normals.size() << " normais, "
@@ -255,53 +236,34 @@ int main(int argc, char* argv[]) {
     }
     PhongLight light = { glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f) };
     std::vector<PhongMaterial> materials = {
-        { glm::vec3(1.0f, 0.0f, 0.0f), 0.1f, 0.5f, 32 }, // vermelho
-        { glm::vec3(0.0f, 1.0f, 0.0f), 0.1f, 0.5f, 32 }, // verde
-        { glm::vec3(0.0f, 0.0f, 1.0f), 0.1f, 0.5f, 32 }  // azul
+        { glm::vec3(1.0f, 0.0f, 0.0f), 0.1f, 0.5f, 32 },
+        { glm::vec3(0.0f, 1.0f, 0.0f), 0.1f, 0.5f, 32 },
+        { glm::vec3(0.0f, 0.0f, 1.0f), 0.1f, 0.5f, 32 }
     };
-    // Eleva todos os modelos para começarem acima do chão
     for (int i = 0; i < 3; ++i) {
         for (auto& v : models[i].vertices) {
             v.x += -2.0f;
         }
     }
 
-    // Agora inicialize a física
-    // Now initialize physics
     std::vector<ModelPhysics> physicsModels(3);
     float masses[3] = { 10.0f, 2.0f, 50.0f };
-    // Initial Y positions to make them fall from different heights or start on ground
-    float initialYPositions[3] = {0.0f, 0.0f, 0.0f}; // Default to 0
-
-    // Adjust initial positions to make Model 2 fall onto Model 1
-    // Assuming Model 1 (green) is the second model loaded (index 1)
-    // And Model 2 (blue) is the third model loaded (index 2)
-    initialYPositions[0] = 0.0f; // Red model, maybe start on ground or higher
-    initialYPositions[1] = 0.0f; // Green model, start on ground
-    initialYPositions[2] = 1.0f; // Blue model, start high above for impact
-
-    // For consistent positioning:
-    // Model 0 (red) might start slightly left
-    // Model 1 (green) at center (x=0)
-    // Model 2 (blue) at center (x=0)
-
-    float initialXPositions[3] = {-1.0f, 0.0f, 0.0f}; // Adjust X positions if needed
+    float initialYPositions[3] = {0.0f, 0.0f, 1.0f};
+    float initialXPositions[3] = {-1.0f, 0.0f, 0.0f};
 
     for (int i = 0; i < 3; ++i) {
-        for (const auto& v : models[i].vertices) { // original model vertices
+        for (const auto& v : models[i].vertices) {
             VertexPhysics vp;
-            // Apply the initial position offset for each model
             vp.position = v + glm::vec3(initialXPositions[i], initialYPositions[i], 0.0f);
             vp.velocity = glm::vec3(0.0f);
             vp.fixed = false;
-            vp.mass = masses[i]; // different mass for each model
+            vp.mass = masses[i];
             physicsModels[i].vertices.push_back(vp);
         }
     }
 
-    // Example: pendure o primeiro vértice do primeiro modelo
     if (!physicsModels[0].vertices.empty())
-        physicsModels[0].vertices[0].fixed = true; // This will pin the red model's first vertex
+        physicsModels[0].vertices[0].fixed = true;
 
     float gravity = 9.8f;
     float groundY = -2.0f;
@@ -309,34 +271,25 @@ int main(int argc, char* argv[]) {
 
     int frame = 0;
 
-    float restitution[3] = {0.0f, 0.5f, 0.95f}; // tecido, rígido, borracha
+    float restitution[3] = {0.0f, 0.5f, 0.95f};
 
-    // Criação do chão (groundModelData)
     ModelData groundModelData;
-
-    // Vértices do quad no plano XZ, centrado na origem, y = 0
     groundModelData.vertices = {
         glm::vec3(-0.5f, 0.0f, -0.5f),
         glm::vec3( 0.5f, 0.0f, -0.5f),
         glm::vec3( 0.5f, 0.0f,  0.5f),
         glm::vec3(-0.5f, 0.0f,  0.5f)
     };
-
-    // Normais para cima
     groundModelData.normals = {
         glm::vec3(0.0f, 1.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f),
         glm::vec3(0.0f, 1.0f, 0.0f)
     };
-
-    // Índices para dois triângulos
     groundModelData.faces = {
         0, 1, 2,
         2, 3, 0
     };
-
-    // Crie os buffers OpenGL para o chão
     setupBuffers(
         groundModelData.VAO,
         groundModelData.VBO_vertices,
@@ -347,7 +300,6 @@ int main(int argc, char* argv[]) {
         groundModelData.faces
     );
 
-    // Defina a AABB do chão (como se fosse um ModelPhysics)
     glm::mat4 groundModel = glm::scale(
         glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, groundY, 0.0f)),
         glm::vec3(8.0f, 1.0f, 8.0f)
@@ -388,7 +340,6 @@ int main(int argc, char* argv[]) {
         glfwGetCursorPos(window, &xpos, &ypos);
         mouse_callback(window, xpos, ypos, yaw, pitch, lastX, lastY, firstMouse, cameraFront);
 
-        // Atualiza física
         int substeps = 5;
         float subdt = dt / substeps;
         for (int s = 0; s < substeps; ++s) {
@@ -406,37 +357,23 @@ int main(int argc, char* argv[]) {
                 minIdx = i;
             }
         }
-        // Quando o último vértice do tecido chega em y <= 1.0, fixa ele (simula corda esticada)
         static bool cordaTravada = false;
         if (!cordaTravada && minY <= 1.0f) {
             physicsModels[0].vertices[minIdx].fixed = true;
             cordaTravada = true;
         }
 
-        // Atualiza AABBs após a física
-        for (auto& pm : physicsModels)
-            updateAABB(pm);
-
-        // Colisões
-        handleCollisions(physicsModels, restitution);
-
-        // Atualiza vértices dos modelos
         updateModelsFromPhysics(models, physicsModels);
 
-        // Desenha chão
         drawGround(groundModelData, shaderProgram, light, viewPos, groundY);
 
-        // Desenha modelos
         drawAllModels(models, shaderProgram, materials, light, viewPos);
 
-        // Exporta animação
         exportAllModels(models, frame);
         frame++;
 
-        // Supondo que você já tem view e projection (ou pode calcular de novo)
         glm::mat4 view, projection;
-        setViewProjection(shaderProgram, width, height, cameraPos, cameraFront, cameraUp); // ou recalcule aqui
-        // Para cada modelo:
+        setViewProjection(shaderProgram, width, height, cameraPos, cameraFront, cameraUp);
 
         glfwSwapBuffers(window);
         glfwPollEvents();
