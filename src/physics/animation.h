@@ -25,5 +25,5 @@ void updateAllPhysics(
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution);
 void updateAABB(ModelPhysics& model);
 bool checkAABBCollision(const ModelPhysics& a, const ModelPhysics& b);
-void handleCollisions(std::vector<ModelPhysics>& physicsModels, const float restitution[]);
+void handleCollisions(std::vector<ModelPhysics>& physicsModels);
 void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY, float restitution);

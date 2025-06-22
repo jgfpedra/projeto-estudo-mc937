@@ -12,15 +12,21 @@ void updateAllPhysics(
 }
 
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
-    float windStrength = 0.5f * sin(glfwGetTime());
+    float windStrength = 1.0f * sin(glfwGetTime());
     glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
+    float damping = 0.98f;
+    float dragCoef = 0.2f;
 
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
+
         glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f); // gravidade
+        
         bool onGround = (v.position.y <= groundY + 1e-4 && v.velocity.y <= 0.0f);
         if (!onGround) {
             force += wind * v.mass; // vento
+            glm::vec3 drag = -dragCoef * v.velocity; // Arrasto do vento
+            force += drag;
         }
 
         glm::vec3 acceleration = force / v.mass;
@@ -29,35 +35,29 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
     }
 
     // Encontra o menor Y após o movimento
-    float minY = model.vertices[0].position.y;
+    float minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
-        if (v.position.y < minY) minY = v.position.y;
+        if (v.position.y < minY) {
+            minY = v.position.y;
+        }
     }
-
+    
     // Se algum vértice passou do chão, corrija todos juntos
     if (minY < groundY) {
         float delta = groundY - minY;
         for (auto& v : model.vertices) {
             if (!v.fixed) {
                 v.position.y += delta;
-                v.velocity.y *= -restitution;
+                if(v.velocity.y < 0) {
+                   v.velocity.y *= -restitution;
+                }
             }
         }
     }
 
-    float damping = 0.98f;
-    for (auto& v : model.vertices) {
-        if (!v.fixed) v.velocity *= damping;
-    }
-
-    float dragCoef = 0.2f; // ajuste para mais/menos efeito
     for (auto& v : model.vertices) {
         if (!v.fixed) {
-            glm::vec3 drag = -dragCoef * v.velocity; // força de arrasto
-            glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f) + wind * v.mass + drag;
-            glm::vec3 acceleration = force / v.mass;
-            v.velocity += acceleration * dt;
-            v.position += v.velocity * dt;
+            v.velocity *= damping;
         }
     }
 }
@@ -80,39 +80,15 @@ bool checkAABBCollision(const ModelPhysics& a, const ModelPhysics& b) {
            (a.aabbMin.z <= b.aabbMax.z && a.aabbMax.z >= b.aabbMin.z);
 }
 
-void handleCollisions(std::vector<ModelPhysics>& physicsModels, const float restitution[]) {
-    ModelPhysics& greenRigid = physicsModels[1];
-    ModelPhysics& blueRubber = physicsModels[2];
-
-    if (checkAABBCollision(greenRigid, blueRubber)) {
-        glm::vec3 blueIncomingVel(0.0f);
-        if (!blueRubber.vertices.empty()) {
-            for(const auto& v : blueRubber.vertices) blueIncomingVel += v.velocity;
-            blueIncomingVel /= (float)blueRubber.vertices.size();
-        }
-
-        for (auto& v : blueRubber.vertices) {
-            if (!v.fixed) v.velocity.y *= -restitution[2];
-        }
-
-        glm::vec3 greenAvgVel(0.0f);
-        if (!greenRigid.vertices.empty()) {
-            for(const auto& v : greenRigid.vertices) greenAvgVel += v.velocity;
-            greenAvgVel /= (float)greenRigid.vertices.size();
-        }
-
-        float pushFactor = 0.5f; 
-
-        if (blueIncomingVel.y < 0) {
-             greenAvgVel.y += (blueIncomingVel.y * pushFactor);
-        }
-       
-        greenAvgVel.y *= -restitution[1];
-
-        for (auto& v : greenRigid.vertices) {
-            if (!v.fixed) v.velocity.y = greenAvgVel.y;
-        }
-    }
+void handleCollisions(std::vector<ModelPhysics>& physicsModels) {
+    for (int i = 1; i < 3; ++i)
+        for (int j = i+1; j < 3; ++j)
+            if (checkAABBCollision(physicsModels[i], physicsModels[j])) {
+                for (auto& v : physicsModels[i].vertices)
+                    if (!v.fixed) v.velocity.y *= -0.8f;
+                for (auto& v : physicsModels[j].vertices)
+                    if (!v.fixed) v.velocity.y *= -0.8f;
+            }
 }
 
 void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
@@ -125,7 +101,7 @@ void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY
     avgVel /= (float)model.vertices.size();
     avgPos /= (float)model.vertices.size();
 
-    float windStrength = 0.5f * sin(glfwGetTime());
+    float windStrength = 1.0f * sin(glfwGetTime());
     glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
 
     float minY = std::numeric_limits<float>::max();
