@@ -1,29 +1,31 @@
 #include "physics/animation.h"
 
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
-    // Atualiza velocidade e posição normalmente
+    // Atualiza velocidades e posições normalmente
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
         v.velocity += glm::vec3(0.0f, -gravity * dt, 0.0f);
         v.position += v.velocity * dt;
     }
 
-    // Descobre o menor Y dos vértices
+    // Encontra o menor Y após o movimento
     float minY = model.vertices[0].position.y;
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) minY = v.position.y;
     }
 
-    // Se algum vértice passou do chão, corrija todos que passaram
+    // Se algum vértice passou do chão, corrija todos juntos
     if (minY < groundY) {
+        float delta = groundY - minY;
         for (auto& v : model.vertices) {
-            if (!v.fixed && v.position.y < groundY) {
-                v.position.y = groundY;
+            if (!v.fixed) {
+                v.position.y += delta;
                 v.velocity.y *= -restitution;
             }
         }
     }
 }
+
 void updateAABB(ModelPhysics& model) {
     if (model.vertices.empty()) return;
     glm::vec3 min = model.vertices[0].position;
