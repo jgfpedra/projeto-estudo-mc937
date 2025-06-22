@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <functional>
-#include <sys/stat.h> // Para mkdir
+#include <sys/stat.h>
 #include <cstdlib> 
 #include "window/window.h"
 #include "core/model.h"
@@ -57,8 +57,11 @@ void drawAllModels(
 {
     for (int i = 0; i < 3; ++i) {
         setPhongUniforms(shaderProgram, light, materials[i], viewPos);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3((i-1)*0.3f, 0.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(2.0f));
+        float z = 0.0f;
+        // Experimente z positivo para o verde:
+        if (i == 1) z = 0.5f;
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3((i-1)*0.68f, 0.0f, z));
+        model = glm::scale(model, glm::vec3(1.0f));
         drawModel(models[i], shaderProgram, model);
     }
 }
@@ -135,15 +138,46 @@ void drawAABB(const ModelPhysics& model, GLuint shaderProgram, const glm::mat4& 
     glDeleteBuffers(1, &ebo);
 }
 
+auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
+    if (model.vertices.empty()) return;
+    glm::vec3 avgVel(0.0f), avgPos(0.0f);
+    for (auto& v : model.vertices) {
+        avgVel += v.velocity;
+        avgPos += v.position;
+    }
+    avgVel /= (float)model.vertices.size();
+    avgPos /= (float)model.vertices.size();
+
+    avgVel += glm::vec3(0.0f, -gravity * dt, 0.0f);
+    glm::vec3 proposedPos = avgPos + avgVel * dt;
+
+    // Calcula o menor Y dos vértices se mover para proposedPos
+    float minY = std::numeric_limits<float>::max();
+    for (const auto& v : model.vertices) {
+        float y = proposedPos.y + (v.position.y - avgPos.y);
+        if (y < minY) minY = y;
+    }
+
+    // Se algum vértice ficaria abaixo do chão, ajusta o centro para que o menor Y fique em groundY
+    if (minY < groundY) {
+        float delta = groundY - minY;
+        proposedPos.y += delta;
+        avgVel.y *= -restitution;
+    }
+
+    // Aplica o movimento corrigido
+    for (auto& v : model.vertices) {
+        v.position += (proposedPos - avgPos);
+        v.velocity = avgVel;
+    }
+};
+
 int main(int argc, char* argv[]) {
     struct stat st = {0};
     if (stat("model_animations", &st) == -1) {
         mkdir("model_animations", 0755);
     }
-
-    // Limpa arquivos antigos da pasta
     std::system("rm -f model_animations/anim_model*_frame_*.obj");
-
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " model1.obj model2.obj model3.obj\n";
         return -1;
@@ -168,6 +202,11 @@ int main(int argc, char* argv[]) {
             std::cerr << "Failed to load OBJ file: " << argv[i+1] << std::endl;
             return -1;
         }
+        // Adicione este bloco para debug:
+        std::cout << "Modelo " << i << " (" << argv[i+1] << "): "
+                << models[i].vertices.size() << " vértices, "
+                << models[i].normals.size() << " normais, "
+                << models[i].faces.size() / 3 << " faces" << std::endl;
     }
     PhongLight light = { glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f) };
     std::vector<PhongMaterial> materials = {
@@ -175,7 +214,14 @@ int main(int argc, char* argv[]) {
         { glm::vec3(0.0f, 1.0f, 0.0f), 0.1f, 0.5f, 32 }, // verde
         { glm::vec3(0.0f, 0.0f, 1.0f), 0.1f, 0.5f, 32 }  // azul
     };
-    // Inicialização da física para cada modelo
+    // Eleva todos os modelos para começarem acima do chão
+    for (int i = 0; i < 3; ++i) {
+        for (auto& v : models[i].vertices) {
+            v.x += -2.0f;
+        }
+    }
+
+    // Agora inicialize a física
     std::vector<ModelPhysics> physicsModels(3);
     for (int i = 0; i < 3; ++i) {
         for (const auto& v : models[i].vertices) {
@@ -197,30 +243,6 @@ int main(int argc, char* argv[]) {
     int frame = 0;
 
     float restitution[3] = {0.0f, 0.5f, 0.95f}; // tecido, rígido, borracha
-
-    // Função lambda para updateRigidBody (pode ir fora do main também)
-    auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
-        if (model.vertices.empty()) return;
-        glm::vec3 avgVel(0.0f), avgPos(0.0f);
-        for (auto& v : model.vertices) {
-            avgVel += v.velocity;
-            avgPos += v.position;
-        }
-        avgVel /= (float)model.vertices.size();
-        avgPos /= (float)model.vertices.size();
-
-        avgVel += glm::vec3(0.0f, -gravity * dt, 0.0f);
-        avgPos += avgVel * dt;
-
-        if (avgPos.y < groundY) {
-            avgPos.y = groundY;
-            avgVel.y *= -restitution;
-        }
-        for (auto& v : model.vertices) {
-            v.position = avgPos;
-            v.velocity = avgVel;
-        }
-    };
 
     // Criação do chão (groundModelData)
     ModelData groundModelData;
@@ -258,24 +280,18 @@ int main(int argc, char* argv[]) {
         groundModelData.faces
     );
 
-    // Eleva todos os modelos para começarem acima do chão
-    for (int i = 0; i < 3; ++i) {
-        for (auto& v : models[i].vertices) {
-            v.y += 1.5f;
-        }
-    }
     // Defina a AABB do chão (como se fosse um ModelPhysics)
-    glm::vec3 min = groundModelData.vertices[0];
-    glm::vec3 max = groundModelData.vertices[0];
+    glm::mat4 groundModel = glm::scale(
+        glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, groundY, 0.0f)),
+        glm::vec3(8.0f, 1.0f, 8.0f)
+    );
+    glm::vec3 min = glm::vec3(groundModel * glm::vec4(groundModelData.vertices[0], 1.0f));
+    glm::vec3 max = min;
     for (const auto& v : groundModelData.vertices) {
-        min = glm::min(min, v);
-        max = glm::max(max, v);
+        glm::vec3 vt = glm::vec3(groundModel * glm::vec4(v, 1.0f));
+        min = glm::min(min, vt);
+        max = glm::max(max, vt);
     }
-    // Ajuste para a posição e escala do chão na cena
-    min = glm::vec3(-0.5f * 8.0f, 0.0f, -0.5f * 8.0f) + glm::vec3(0.0f, groundY, 0.0f);
-    max = glm::vec3( 0.5f * 8.0f, 1.0f,  0.5f * 8.0f) + glm::vec3(0.0f, groundY, 0.0f);
-
-    // Estrutura para visualização
     ModelPhysics groundPhysics;
     groundPhysics.aabbMin = min;
     groundPhysics.aabbMax = max;
@@ -339,4 +355,13 @@ int main(int argc, char* argv[]) {
     glDeleteShader(fs);
     glfwTerminate();
     return 0;
+    for (int i = 0; i < 3; ++i) {
+        if (!models[i].vertices.empty()) {
+            glm::vec3 avg(0.0f);
+            for (const auto& v : models[i].vertices) avg += v;
+            avg /= (float)models[i].vertices.size();
+            std::cout << "Centro geométrico do modelo " << i << ": ("
+                      << avg.x << ", " << avg.y << ", " << avg.z << ")\n";
+        }
+    }
 }
