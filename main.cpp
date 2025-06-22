@@ -97,15 +97,26 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
         avgPos += v.position;
     }
     avgVel /= (float)model.vertices.size();
-        avgPos /= (float)model.vertices.size();
+    avgPos /= (float)model.vertices.size();
 
     float windStrength = 0.5f * sin(glfwGetTime());
     glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
-    avgVel += (glm::vec3(0.0f, -gravity, 0.0f) + wind) * dt;
+
+    // Calcule minY ANTES de usar
+    float minY = std::numeric_limits<float>::max();
+    for (const auto& v : model.vertices) {
+        if (v.position.y < minY) minY = v.position.y;
+    }
+
+    bool onGround = (minY <= groundY + 1e-4 && avgVel.y <= 0.0f);
+    if (!onGround) {
+        avgVel += wind * dt;
+    }
+    avgVel += glm::vec3(0.0f, -gravity, 0.0f) * dt;
     glm::vec3 proposedPos = avgPos + avgVel * dt;
 
     // Calcula o menor Y dos vértices se mover para proposedPos
-    float minY = std::numeric_limits<float>::max();
+    minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         float y = proposedPos.y + (v.position.y - avgPos.y);
         if (y < minY) minY = y;
@@ -129,6 +140,48 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
         if (!v.fixed) v.velocity *= damping;
     }
 };
+
+void processInput(GLFWwindow* window, float deltaTime,
+                 glm::vec3& cameraPos, glm::vec3& cameraFront, glm::vec3& cameraUp) {
+    float cameraSpeed = 2.5f * deltaTime;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        cameraPos += cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        cameraPos -= cameraSpeed * cameraFront;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+}
+
+void mouse_callback(GLFWwindow* window, double xpos, double ypos,
+                    float& yaw, float& pitch, float& lastX, float& lastY, bool& firstMouse,
+                    glm::vec3& cameraFront) {
+    static float sensitivity = 0.1f;
+    if (firstMouse) {
+        lastX = xpos;
+        lastY = ypos;
+        firstMouse = false;
+    }
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw   += xoffset;
+    pitch += yoffset;
+    if(pitch > 89.0f) pitch = 89.0f;
+    if(pitch < -89.0f) pitch = -89.0f;
+
+    glm::vec3 front;
+    front.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+    front.y = sin(glm::radians(pitch));
+    front.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+    cameraFront = glm::normalize(front);
+}
 
 int main(int argc, char* argv[]) {
     struct stat st = {0};
@@ -256,6 +309,14 @@ int main(int argc, char* argv[]) {
     groundPhysics.aabbMin = min;
     groundPhysics.aabbMax = max;
 
+    glm::vec3 cameraPos   = glm::vec3(0, 2, 6);
+    glm::vec3 cameraFront = glm::normalize(glm::vec3(0, -0.3f, -1));
+    glm::vec3 cameraUp    = glm::vec3(0, 1, 0);
+    float yaw = -135.0f, pitch = -30.0f;
+    float lastX = 320, lastY = 240;
+    bool firstMouse = true;
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     while (!glfwWindowShouldClose(window)) {
         float currentTime = glfwGetTime();
         float dt = currentTime - lastTime;
@@ -265,8 +326,13 @@ int main(int argc, char* argv[]) {
         glClearColor(0.9f, 0.9f, 0.95f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
-        setViewProjection(shaderProgram, width, height);
+
         glm::vec3 viewPos = glm::vec3(0, 0, 5);
+        processInput(window, dt, cameraPos, cameraFront, cameraUp);
+
+        double xpos, ypos;
+        glfwGetCursorPos(window, &xpos, &ypos);
+        mouse_callback(window, xpos, ypos, yaw, pitch, lastX, lastY, firstMouse, cameraFront);
 
         // Atualiza física
         int substeps = 5;
@@ -315,7 +381,7 @@ int main(int argc, char* argv[]) {
 
         // Supondo que você já tem view e projection (ou pode calcular de novo)
         glm::mat4 view, projection;
-        setViewProjection(shaderProgram, width, height); // ou recalcule aqui
+        setViewProjection(shaderProgram, width, height, cameraPos, cameraFront, cameraUp); // ou recalcule aqui
         // Para cada modelo:
 
         glfwSwapBuffers(window);

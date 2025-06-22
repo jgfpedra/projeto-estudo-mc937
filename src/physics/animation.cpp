@@ -8,7 +8,10 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
         glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f); // gravidade
-        force += wind * v.mass; // vento
+        bool onGround = (v.position.y <= groundY + 1e-4 && v.velocity.y <= 0.0f);
+        if (!onGround) {
+            force += wind * v.mass; // vento
+        }
 
         glm::vec3 acceleration = force / v.mass;
         v.velocity += acceleration * dt;
