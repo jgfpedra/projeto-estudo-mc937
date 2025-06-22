@@ -97,9 +97,10 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
         avgPos += v.position;
     }
     avgVel /= (float)model.vertices.size();
-    avgPos /= (float)model.vertices.size();
+        avgPos /= (float)model.vertices.size();
 
-    glm::vec3 wind = glm::vec3(0.0f, 0.0f, -0.01f); // vento para -z
+    float windStrength = 0.5f * sin(glfwGetTime());
+    glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
     avgVel += (glm::vec3(0.0f, -gravity, 0.0f) + wind) * dt;
     glm::vec3 proposedPos = avgPos + avgVel * dt;
 
@@ -121,6 +122,11 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
     for (auto& v : model.vertices) {
         v.position += (proposedPos - avgPos);
         v.velocity = avgVel;
+    }
+    
+    float damping = 0.98f;
+    for (auto& v : model.vertices) {
+        if (!v.fixed) v.velocity *= damping;
     }
 };
 
@@ -175,13 +181,14 @@ int main(int argc, char* argv[]) {
 
     // Agora inicialize a física
     std::vector<ModelPhysics> physicsModels(3);
+    float masses[3] = { 10.0f, 2.0f, 50.0f };
     for (int i = 0; i < 3; ++i) {
         for (const auto& v : models[i].vertices) {
             VertexPhysics vp;
             vp.position = v;
             vp.velocity = glm::vec3(0.0f);
             vp.fixed = false;
-            vp.mass = 1.0f;
+            vp.mass = masses[i]; // massa diferente para cada modelo
             physicsModels[i].vertices.push_back(vp);
         }
     }
@@ -262,7 +269,15 @@ int main(int argc, char* argv[]) {
         glm::vec3 viewPos = glm::vec3(0, 0, 5);
 
         // Atualiza física
-        updateAllPhysics(physicsModels, dt, gravity, groundY, restitution, updateRigidBody);
+        int substeps = 5;
+        float subdt = dt / substeps;
+        for (int s = 0; s < substeps; ++s) {
+            updateAllPhysics(physicsModels, subdt, gravity, groundY, restitution, updateRigidBody);
+            for (auto& pm : physicsModels)
+                updateAABB(pm);
+            handleCollisions(physicsModels);
+        }
+
         float minY = physicsModels[0].vertices[0].position.y;
         size_t minIdx = 0;
         for (size_t i = 0; i < physicsModels[0].vertices.size(); ++i) {
@@ -287,7 +302,6 @@ int main(int argc, char* argv[]) {
 
         // Atualiza vértices dos modelos
         updateModelsFromPhysics(models, physicsModels);
-
 
         // Desenha chão
         drawGround(groundModelData, shaderProgram, light, viewPos, groundY);

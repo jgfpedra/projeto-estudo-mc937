@@ -1,7 +1,9 @@
 #include "physics/animation.h"
+#include <GLFW/glfw3.h>
 
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
-    glm::vec3 wind = glm::vec3(0.0f, 0.0f, -0.01f); // vento para -z
+    float windStrength = 0.5f * sin(glfwGetTime());
+    glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
 
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
@@ -27,6 +29,22 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
                 v.position.y += delta;
                 v.velocity.y *= -restitution;
             }
+        }
+    }
+
+    float damping = 0.98f;
+    for (auto& v : model.vertices) {
+        if (!v.fixed) v.velocity *= damping;
+    }
+
+    float dragCoef = 0.2f; // ajuste para mais/menos efeito
+    for (auto& v : model.vertices) {
+        if (!v.fixed) {
+            glm::vec3 drag = -dragCoef * v.velocity; // força de arrasto
+            glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f) + wind * v.mass + drag;
+            glm::vec3 acceleration = force / v.mass;
+            v.velocity += acceleration * dt;
+            v.position += v.velocity * dt;
         }
     }
 }
