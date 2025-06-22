@@ -37,15 +37,48 @@ void exportAllModels(const std::vector<ModelData>& models, int frame) {
     }
 }
 
-void handleCollisions(std::vector<ModelPhysics>& physicsModels) {
-    for (int i = 1; i < 3; ++i)
-        for (int j = i+1; j < 3; ++j)
-            if (checkAABBCollision(physicsModels[i], physicsModels[j])) {
-                for (auto& v : physicsModels[i].vertices)
-                    if (!v.fixed) v.velocity.y *= -0.8f;
-                for (auto& v : physicsModels[j].vertices)
-                    if (!v.fixed) v.velocity.y *= -0.8f;
-            }
+void handleCollisions(std::vector<ModelPhysics>& physicsModels, const float restitution[]) {
+    // Only check collision between Model 1 (green, rigid) and Model 2 (blue, rubber)
+    ModelPhysics& greenRigid = physicsModels[1];
+    ModelPhysics& blueRubber = physicsModels[2];
+
+    if (checkAABBCollision(greenRigid, blueRubber)) {
+        std::cout << "Collision detected between green (rigid) and blue (rubber)" << std::endl;
+
+        // Response for the blue (rubber) model - it bounces up
+        glm::vec3 blueIncomingVel(0.0f);
+        if (!blueRubber.vertices.empty()) {
+            for(const auto& v : blueRubber.vertices) blueIncomingVel += v.velocity;
+            blueIncomingVel /= (float)blueRubber.vertices.size();
+        }
+
+        // Apply bounce for blue rubber using its restitution value
+        for (auto& v : blueRubber.vertices) {
+            if (!v.fixed) v.velocity.y *= -restitution[2]; // Use restitution[2] for blue model
+        }
+
+        // Response for the green (rigid) model - it gets pushed down
+        glm::vec3 greenAvgVel(0.0f);
+        if (!greenRigid.vertices.empty()) {
+            for(const auto& v : greenRigid.vertices) greenAvgVel += v.velocity;
+            greenAvgVel /= (float)greenRigid.vertices.size();
+        }
+
+        float pushFactor = 0.5f; 
+
+        // Update green rigid body's average velocity for downward push
+        if (blueIncomingVel.y < 0) { // Ensure blue was moving downwards
+             greenAvgVel.y += (blueIncomingVel.y * pushFactor); // Add negative velocity
+        }
+       
+        // Apply green's own restitution (0.5 for rigid body)
+        greenAvgVel.y *= -restitution[1]; // Use restitution[1] for green model
+
+        // Distribute this new average velocity back to all vertices of the green rigid body
+        for (auto& v : greenRigid.vertices) {
+            if (!v.fixed) v.velocity.y = greenAvgVel.y;
+        }
+    }
 }
 
 void drawAllModels(
@@ -57,12 +90,13 @@ void drawAllModels(
 {
     for (int i = 0; i < 3; ++i) {
         setPhongUniforms(shaderProgram, light, materials[i], viewPos);
-        float z = 0.0f;
-        // Experimente z positivo para o verde:
-        if (i == 1) z = 0.5f;
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3((i-1)*0.68f, 0.0f, z));
-        model = glm::scale(model, glm::vec3(1.0f));
-        drawModel(models[i], shaderProgram, model);
+        
+        glm::mat4 model = glm::mat4(1.0f); // Identity matrix
+        // The models' positions are now directly updated by physics
+        // So, we only need to apply scaling if desired.
+        // model = glm::scale(model, glm::vec3(1.0f)); // Example scaling if needed
+
+        drawModel(models[i], shaderProgram, model); // Pass the identity/scale matrix
     }
 }
 
@@ -233,21 +267,41 @@ int main(int argc, char* argv[]) {
     }
 
     // Agora inicialize a física
+    // Now initialize physics
     std::vector<ModelPhysics> physicsModels(3);
     float masses[3] = { 10.0f, 2.0f, 50.0f };
+    // Initial Y positions to make them fall from different heights or start on ground
+    float initialYPositions[3] = {0.0f, 0.0f, 0.0f}; // Default to 0
+
+    // Adjust initial positions to make Model 2 fall onto Model 1
+    // Assuming Model 1 (green) is the second model loaded (index 1)
+    // And Model 2 (blue) is the third model loaded (index 2)
+    initialYPositions[0] = 0.0f; // Red model, maybe start on ground or higher
+    initialYPositions[1] = 0.0f; // Green model, start on ground
+    initialYPositions[2] = 1.0f; // Blue model, start high above for impact
+
+    // For consistent positioning:
+    // Model 0 (red) might start slightly left
+    // Model 1 (green) at center (x=0)
+    // Model 2 (blue) at center (x=0)
+
+    float initialXPositions[3] = {-1.0f, 0.0f, 0.0f}; // Adjust X positions if needed
+
     for (int i = 0; i < 3; ++i) {
-        for (const auto& v : models[i].vertices) {
+        for (const auto& v : models[i].vertices) { // original model vertices
             VertexPhysics vp;
-            vp.position = v;
+            // Apply the initial position offset for each model
+            vp.position = v + glm::vec3(initialXPositions[i], initialYPositions[i], 0.0f);
             vp.velocity = glm::vec3(0.0f);
             vp.fixed = false;
-            vp.mass = masses[i]; // massa diferente para cada modelo
+            vp.mass = masses[i]; // different mass for each model
             physicsModels[i].vertices.push_back(vp);
         }
     }
-    // Exemplo: pendure o primeiro vértice do primeiro modelo
+
+    // Example: pendure o primeiro vértice do primeiro modelo
     if (!physicsModels[0].vertices.empty())
-        physicsModels[0].vertices[0].fixed = true;
+        physicsModels[0].vertices[0].fixed = true; // This will pin the red model's first vertex
 
     float gravity = 9.8f;
     float groundY = -2.0f;
@@ -341,7 +395,7 @@ int main(int argc, char* argv[]) {
             updateAllPhysics(physicsModels, subdt, gravity, groundY, restitution, updateRigidBody);
             for (auto& pm : physicsModels)
                 updateAABB(pm);
-            handleCollisions(physicsModels);
+            handleCollisions(physicsModels, restitution);
         }
 
         float minY = physicsModels[0].vertices[0].position.y;
@@ -364,7 +418,7 @@ int main(int argc, char* argv[]) {
             updateAABB(pm);
 
         // Colisões
-        handleCollisions(physicsModels);
+        handleCollisions(physicsModels, restitution);
 
         // Atualiza vértices dos modelos
         updateModelsFromPhysics(models, physicsModels);
