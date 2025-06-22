@@ -1,12 +1,9 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-#include <glm/glm.hpp>
+#include "graphics/mesh.h"
+#include "graphics/shaders.h"
+#include "graphics/light.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
-#include "core/model.h"
-#include "graphics/shaders.h"
-#include "graphics/light.h"
 
 void drawModel(const ModelData& model, GLuint shaderProgram, const glm::mat4& modelMatrix) {
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");

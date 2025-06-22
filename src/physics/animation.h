@@ -1,4 +1,5 @@
 #pragma once
+#include "core/model.h"
 #include <glm/glm.hpp>
 #include <vector>
 #include <functional>
@@ -16,12 +17,21 @@ struct ModelPhysics {
     glm::vec3 aabbMin, aabbMax;
 };
 
+void createPhysicsModels(
+    const std::vector<ModelData>& models,
+    std::vector<ModelPhysics>& physicsModels,
+    const float masses[3],
+    const float initialY[3],
+    const float initialX[3]
+);
+
 void updateAllPhysics(
     std::vector<ModelPhysics>& physicsModels,
     float dt, float gravity, float groundY,
     const float restitution[3],
     std::function<void(ModelPhysics&, float, float, float, float)> updateRigidBody
 );
+
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution);
 void updateAABB(ModelPhysics& model);
 bool checkAABBCollision(const ModelPhysics& a, const ModelPhysics& b);

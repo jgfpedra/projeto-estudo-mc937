@@ -4,10 +4,7 @@
 #include <glm/glm.hpp>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-#include "core/objloader.h"
 #include "core/model.h"
-#include "core/objexporter.h"
-#include "graphics/shaders.h"
 #include "graphics/light.h"
 #include "graphics/camera.h"
 #include "physics/animation.h"

@@ -1,7 +1,9 @@
-#include "objloader.h"
-#include "objexporter.h"
 #include "core/model.h"
+#include "physics/animation.h"
 #include "graphics/mesh.h"
+#include "core/objexporter.h"
+#include "core/objloader.h"
+#include <iostream>
 
 bool loadModel(const char* filename, ModelData& model) {
     if (!carregarObj(filename, model.vertices, model.normals, model.faces))
@@ -25,4 +27,15 @@ void exportAllModels(const std::vector<ModelData>& models, int frame) {
         std::string filename = "model_animations/anim_model" + std::to_string(i+1) + "_frame_" + std::to_string(frame) + ".obj";
         exportObjFrame(filename, models[i].vertices, models[i].normals, models[i].faces);
     }
+}
+
+bool loadAllModels(const std::vector<std::string>& filenames, std::vector<ModelData>& models) {
+    models.resize(filenames.size());
+    for (size_t i = 0; i < filenames.size(); ++i) {
+        if (!loadModel(filenames[i].c_str(), models[i])) {
+            std::cerr << "Failed to load OBJ file: " << filenames[i] << std::endl;
+            return false;
+        }
+    }
+    return true;
 }

@@ -35,20 +35,16 @@ int main(int argc, char* argv[]) {
         std::cerr << "ERROR: GLEW Initialization Failed\n";
         return -1;
     }
+    
     GLuint vs = glCreateShader(GL_VERTEX_SHADER);
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     GLuint shaderProgram = glCreateProgram();
     configureShaders(vs, fs, shaderProgram);
-    std::vector<ModelData> models(3);
-    for (int i = 0; i < 3; ++i) {
-        if (!loadModel(argv[i+1], models[i])) {
-            std::cerr << "Failed to load OBJ file: " << argv[i+1] << std::endl;
-            return -1;
-        }
-        std::cout << "Modelo " << i << " (" << argv[i+1] << "): "
-                << models[i].vertices.size() << " vértices, "
-                << models[i].normals.size() << " normais, "
-                << models[i].faces.size() / 3 << " faces" << std::endl;
+
+    std::vector<std::string> modelFiles = { argv[1], argv[2], argv[3] };
+    std::vector<ModelData> models;
+    if (!loadAllModels(modelFiles, models)) {
+        return -1;
     }
     PhongLight light = { glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f) };
     std::vector<PhongMaterial> materials = {
@@ -62,21 +58,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::vector<ModelPhysics> physicsModels(3);
+    std::vector<ModelPhysics> physicsModels;
     float masses[3] = { 10.0f, 2.0f, 50.0f };
     float initialYPositions[3] = {0.0f, 0.0f, 1.0f};
     float initialXPositions[3] = {-1.0f, 0.0f, 0.0f};
-
-    for (int i = 0; i < 3; ++i) {
-        for (const auto& v : models[i].vertices) {
-            VertexPhysics vp;
-            vp.position = v + glm::vec3(initialXPositions[i], initialYPositions[i], 0.0f);
-            vp.velocity = glm::vec3(0.0f);
-            vp.fixed = false;
-            vp.mass = masses[i];
-            physicsModels[i].vertices.push_back(vp);
-        }
-    }
+    createPhysicsModels(models, physicsModels, masses, initialYPositions, initialXPositions);
 
     if (!physicsModels[0].vertices.empty())
         physicsModels[0].vertices[0].fixed = true;

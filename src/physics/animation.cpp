@@ -1,4 +1,27 @@
 #include "physics/animation.h"
+#include "core/model.h"
+#include <cmath>
+#include <limits>
+#include <GLFW/glfw3.h>
+
+void createPhysicsModels(
+    const std::vector<ModelData>& models,
+    std::vector<ModelPhysics>& physicsModels,
+    const float masses[3],
+    const float initialY[3],
+    const float initialX[3]) {
+    physicsModels.resize(models.size());
+    for (size_t i = 0; i < models.size(); ++i) {
+        for (const auto& v : models[i].vertices) {
+            VertexPhysics vp;
+            vp.position = v + glm::vec3(initialX[i], initialY[i], 0.0f);
+            vp.velocity = glm::vec3(0.0f);
+            vp.fixed = false;
+            vp.mass = masses[i];
+            physicsModels[i].vertices.push_back(vp);
+        }
+    }
+}
 
 void updateAllPhysics(
     std::vector<ModelPhysics>& physicsModels,
@@ -28,13 +51,11 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
         v.position += v.velocity * dt;
     }
 
-    // Encontra o menor Y após o movimento
     float minY = model.vertices[0].position.y;
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) minY = v.position.y;
     }
 
-    // Se algum vértice passou do chão, corrija todos juntos
     if (minY < groundY) {
         float delta = groundY - minY;
         for (auto& v : model.vertices) {
@@ -50,10 +71,10 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
         if (!v.fixed) v.velocity *= damping;
     }
 
-    float dragCoef = 0.2f; // ajuste para mais/menos efeito
+    float dragCoef = 0.2f;
     for (auto& v : model.vertices) {
         if (!v.fixed) {
-            glm::vec3 drag = -dragCoef * v.velocity; // força de arrasto
+            glm::vec3 drag = -dragCoef * v.velocity;
             glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f) + wind * v.mass + drag;
             glm::vec3 acceleration = force / v.mass;
             v.velocity += acceleration * dt;
