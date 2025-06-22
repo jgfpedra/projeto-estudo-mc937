@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
             updateAllPhysics(physicsModels, subdt, gravity, groundY, restitution, updateRigidBody);
             for (auto& pm : physicsModels)
                 updateAABB(pm);
-            handleCollisions(physicsModels, restitution);
+            handleCollisions(physicsModels);
         }
 
         float minY = physicsModels[0].vertices[0].position.y;
