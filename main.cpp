@@ -4,6 +4,9 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <functional>
+#include <sys/stat.h> // Para mkdir
+#include <cstdlib> 
 #include "window/window.h"
 #include "core/model.h"
 #include "physics/animation.h"
@@ -12,7 +15,6 @@
 #include "graphics/light.h"
 #include "graphics/camera.h"
 #include "graphics/mesh.h"
-#include <functional>
 
 void updatePhysicsAll(std::vector<ModelPhysics>& physicsModels, float dt, float gravity, float groundY) {
     for (auto& pm : physicsModels)
@@ -30,7 +32,7 @@ void updateModelsFromPhysics(std::vector<ModelData>& models, const std::vector<M
 
 void exportAllModels(const std::vector<ModelData>& models, int frame) {
     for (size_t i = 0; i < models.size(); ++i) {
-        std::string filename = "anim_model" + std::to_string(i+1) + "_frame_" + std::to_string(frame) + ".obj";
+        std::string filename = "model_animations/anim_model" + std::to_string(i+1) + "_frame_" + std::to_string(frame) + ".obj";
         exportObjFrame(filename, models[i].vertices, models[i].normals, models[i].faces);
     }
 }
@@ -55,7 +57,8 @@ void drawAllModels(
 {
     for (int i = 0; i < 3; ++i) {
         setPhongUniforms(shaderProgram, light, materials[i], viewPos);
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3((i-1)*2.0f, 0.0f, 0.0f));
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3((i-1)*0.3f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(2.0f));
         drawModel(models[i], shaderProgram, model);
     }
 }
@@ -72,7 +75,6 @@ void drawGround(
     drawModel(groundModelData, shaderProgram, groundModel);
 }
 
-
 void updateAllPhysics(
     std::vector<ModelPhysics>& physicsModels,
     float dt, float gravity, float groundY,
@@ -84,7 +86,64 @@ void updateAllPhysics(
     updatePhysics(physicsModels[2], dt, gravity, groundY, restitution[2]); // borracha
 }
 
+void drawAABB(const ModelPhysics& model, GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection) {
+    // Define os 8 vértices da caixa
+    glm::vec3 min = model.aabbMin;
+    glm::vec3 max = model.aabbMax;
+    glm::vec3 verts[8] = {
+        {min.x, min.y, min.z},
+        {max.x, min.y, min.z},
+        {max.x, max.y, min.z},
+        {min.x, max.y, min.z},
+        {min.x, min.y, max.z},
+        {max.x, min.y, max.z},
+        {max.x, max.y, max.z},
+        {min.x, max.y, max.z}
+    };
+    // Linhas da caixa (12 arestas)
+    GLuint indices[24] = {
+        0,1, 1,2, 2,3, 3,0, // base
+        4,5, 5,6, 6,7, 7,4, // topo
+        0,4, 1,5, 2,6, 3,7  // laterais
+    };
+
+    GLuint vao, vbo, ebo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+
+    // Use um shader simples só com cor (ou seu shader atual, mas setando cor fixa)
+    glUseProgram(shaderProgram);
+    // Sete uniforms de view/projection se necessário
+
+    // Desenhe em modo wireframe
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glBindVertexArray(0);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+}
+
 int main(int argc, char* argv[]) {
+    struct stat st = {0};
+    if (stat("model_animations", &st) == -1) {
+        mkdir("model_animations", 0755);
+    }
+
+    // Limpa arquivos antigos da pasta
+    std::system("rm -f model_animations/anim_model*_frame_*.obj");
+
     if (argc < 4) {
         std::cerr << "Usage: " << argv[0] << " model1.obj model2.obj model3.obj\n";
         return -1;
@@ -94,6 +153,7 @@ int main(int argc, char* argv[]) {
     GLFWwindow* window = createWindow(width, height);
     if (!window) return -1;
     glfwMakeContextCurrent(window);
+    glEnable(GL_DEPTH_TEST);
     if (glewInit() != GLEW_OK) {
         std::cerr << "ERROR: GLEW Initialization Failed\n";
         return -1;
@@ -109,11 +169,11 @@ int main(int argc, char* argv[]) {
             return -1;
         }
     }
-    PhongLight light = { glm::vec3(1.0f, 1.0f, 1.0f), glm::vec3(1.0f, 1.0f, 1.0f) };
+    PhongLight light = { glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(1.0f, 1.0f, 1.0f) };
     std::vector<PhongMaterial> materials = {
-        { glm::vec3(1.0f, 0.5f, 0.5f), 0.1f, 0.5f, 32 }, // vermelho claro
-        { glm::vec3(0.5f, 1.0f, 0.5f), 0.2f, 0.7f, 16 }, // verde claro
-        { glm::vec3(0.5f, 0.5f, 1.0f), 0.3f, 1.0f, 64 }  // azul claro
+        { glm::vec3(1.0f, 0.0f, 0.0f), 0.1f, 0.5f, 32 }, // vermelho
+        { glm::vec3(0.0f, 1.0f, 0.0f), 0.1f, 0.5f, 32 }, // verde
+        { glm::vec3(0.0f, 0.0f, 1.0f), 0.1f, 0.5f, 32 }  // azul
     };
     // Inicialização da física para cada modelo
     std::vector<ModelPhysics> physicsModels(3);
@@ -133,9 +193,6 @@ int main(int argc, char* argv[]) {
     float gravity = 9.8f;
     float groundY = -2.0f;
     static float lastTime = glfwGetTime();
-    float currentTime = glfwGetTime();
-    float dt = currentTime - lastTime;
-    lastTime = currentTime;
 
     int frame = 0;
 
@@ -201,7 +258,34 @@ int main(int argc, char* argv[]) {
         groundModelData.faces
     );
 
+    // Eleva todos os modelos para começarem acima do chão
+    for (int i = 0; i < 3; ++i) {
+        for (auto& v : models[i].vertices) {
+            v.y += 1.5f;
+        }
+    }
+    // Defina a AABB do chão (como se fosse um ModelPhysics)
+    glm::vec3 min = groundModelData.vertices[0];
+    glm::vec3 max = groundModelData.vertices[0];
+    for (const auto& v : groundModelData.vertices) {
+        min = glm::min(min, v);
+        max = glm::max(max, v);
+    }
+    // Ajuste para a posição e escala do chão na cena
+    min = glm::vec3(-0.5f * 8.0f, 0.0f, -0.5f * 8.0f) + glm::vec3(0.0f, groundY, 0.0f);
+    max = glm::vec3( 0.5f * 8.0f, 1.0f,  0.5f * 8.0f) + glm::vec3(0.0f, groundY, 0.0f);
+
+    // Estrutura para visualização
+    ModelPhysics groundPhysics;
+    groundPhysics.aabbMin = min;
+    groundPhysics.aabbMax = max;
+
     while (!glfwWindowShouldClose(window)) {
+        float currentTime = glfwGetTime();
+        float dt = currentTime - lastTime;
+        dt = std::min(dt, 0.02f);
+        lastTime = currentTime;
+
         glClearColor(0.9f, 0.9f, 0.95f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glUseProgram(shaderProgram);
@@ -211,21 +295,35 @@ int main(int argc, char* argv[]) {
         // Atualiza física
         updateAllPhysics(physicsModels, dt, gravity, groundY, restitution, updateRigidBody);
 
+        // Atualiza AABBs após a física
+        for (auto& pm : physicsModels)
+            updateAABB(pm);
+
         // Colisões
         handleCollisions(physicsModels);
 
         // Atualiza vértices dos modelos
         updateModelsFromPhysics(models, physicsModels);
 
-        // Desenha modelos
-        drawAllModels(models, shaderProgram, materials, light, viewPos);
 
         // Desenha chão
         drawGround(groundModelData, shaderProgram, light, viewPos, groundY);
 
+        // Desenha modelos
+        drawAllModels(models, shaderProgram, materials, light, viewPos);
+
         // Exporta animação
         exportAllModels(models, frame);
         frame++;
+
+        // Supondo que você já tem view e projection (ou pode calcular de novo)
+        glm::mat4 view, projection;
+        setViewProjection(shaderProgram, width, height); // ou recalcule aqui
+        // Para cada modelo:
+        drawAABB(groundPhysics, shaderProgram, view, projection);
+        for (int i = 0; i < 3; ++i) {
+            drawAABB(physicsModels[i], shaderProgram, view, projection);
+        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
