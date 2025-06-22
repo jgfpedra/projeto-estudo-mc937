@@ -6,6 +6,7 @@ struct VertexPhysics {
     glm::vec3 position;
     glm::vec3 velocity;
     bool fixed = false;
+    float mass;
 };
 
 struct ModelPhysics {

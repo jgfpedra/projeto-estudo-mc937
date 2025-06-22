@@ -1,10 +1,15 @@
 #include "physics/animation.h"
 
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
-    // Atualiza velocidades e posições normalmente
+    glm::vec3 wind = glm::vec3(0.0f, 0.0f, -0.01f); // vento para -z
+
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
-        v.velocity += glm::vec3(0.0f, -gravity * dt, 0.0f);
+        glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f); // gravidade
+        force += wind * v.mass; // vento
+
+        glm::vec3 acceleration = force / v.mass;
+        v.velocity += acceleration * dt;
         v.position += v.velocity * dt;
     }
 

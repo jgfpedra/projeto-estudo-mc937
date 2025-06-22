@@ -89,55 +89,6 @@ void updateAllPhysics(
     updatePhysics(physicsModels[2], dt, gravity, groundY, restitution[2]); // borracha
 }
 
-void drawAABB(const ModelPhysics& model, GLuint shaderProgram, const glm::mat4& view, const glm::mat4& projection) {
-    // Define os 8 vértices da caixa
-    glm::vec3 min = model.aabbMin;
-    glm::vec3 max = model.aabbMax;
-    glm::vec3 verts[8] = {
-        {min.x, min.y, min.z},
-        {max.x, min.y, min.z},
-        {max.x, max.y, min.z},
-        {min.x, max.y, min.z},
-        {min.x, min.y, max.z},
-        {max.x, min.y, max.z},
-        {max.x, max.y, max.z},
-        {min.x, max.y, max.z}
-    };
-    // Linhas da caixa (12 arestas)
-    GLuint indices[24] = {
-        0,1, 1,2, 2,3, 3,0, // base
-        4,5, 5,6, 6,7, 7,4, // topo
-        0,4, 1,5, 2,6, 3,7  // laterais
-    };
-
-    GLuint vao, vbo, ebo;
-    glGenVertexArrays(1, &vao);
-    glGenBuffers(1, &vbo);
-    glGenBuffers(1, &ebo);
-
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
-
-    // Use um shader simples só com cor (ou seu shader atual, mas setando cor fixa)
-    glUseProgram(shaderProgram);
-    // Sete uniforms de view/projection se necessário
-
-    // Desenhe em modo wireframe
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    glBindVertexArray(0);
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
-}
-
 auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
     if (model.vertices.empty()) return;
     glm::vec3 avgVel(0.0f), avgPos(0.0f);
@@ -148,7 +99,8 @@ auto updateRigidBody = [](ModelPhysics& model, float dt, float gravity, float gr
     avgVel /= (float)model.vertices.size();
     avgPos /= (float)model.vertices.size();
 
-    avgVel += glm::vec3(0.0f, -gravity * dt, 0.0f);
+    glm::vec3 wind = glm::vec3(0.0f, 0.0f, -0.01f); // vento para -z
+    avgVel += (glm::vec3(0.0f, -gravity, 0.0f) + wind) * dt;
     glm::vec3 proposedPos = avgPos + avgVel * dt;
 
     // Calcula o menor Y dos vértices se mover para proposedPos
@@ -229,6 +181,7 @@ int main(int argc, char* argv[]) {
             vp.position = v;
             vp.velocity = glm::vec3(0.0f);
             vp.fixed = false;
+            vp.mass = 1.0f;
             physicsModels[i].vertices.push_back(vp);
         }
     }
@@ -310,6 +263,20 @@ int main(int argc, char* argv[]) {
 
         // Atualiza física
         updateAllPhysics(physicsModels, dt, gravity, groundY, restitution, updateRigidBody);
+        float minY = physicsModels[0].vertices[0].position.y;
+        size_t minIdx = 0;
+        for (size_t i = 0; i < physicsModels[0].vertices.size(); ++i) {
+            if (physicsModels[0].vertices[i].position.y < minY) {
+                minY = physicsModels[0].vertices[i].position.y;
+                minIdx = i;
+            }
+        }
+        // Quando o último vértice do tecido chega em y <= 1.0, fixa ele (simula corda esticada)
+        static bool cordaTravada = false;
+        if (!cordaTravada && minY <= 1.0f) {
+            physicsModels[0].vertices[minIdx].fixed = true;
+            cordaTravada = true;
+        }
 
         // Atualiza AABBs após a física
         for (auto& pm : physicsModels)
@@ -336,10 +303,6 @@ int main(int argc, char* argv[]) {
         glm::mat4 view, projection;
         setViewProjection(shaderProgram, width, height); // ou recalcule aqui
         // Para cada modelo:
-        drawAABB(groundPhysics, shaderProgram, view, projection);
-        for (int i = 0; i < 3; ++i) {
-            drawAABB(physicsModels[i], shaderProgram, view, projection);
-        }
 
         glfwSwapBuffers(window);
         glfwPollEvents();
