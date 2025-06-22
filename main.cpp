@@ -160,8 +160,11 @@ int main(int argc, char* argv[]) {
             }
         }
         static bool cordaTravada = false;
-        if (!cordaTravada && minY <= 1.0f) {
+        if (!cordaTravada && minY <= -0.5f) {
             physicsModels[0].vertices[minIdx].fixed = true;
+            for (auto& v : physicsModels[0].vertices) {
+                v.notFalling = true;
+            }
             cordaTravada = true;
         }
 
