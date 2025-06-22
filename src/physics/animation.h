@@ -1,6 +1,8 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <vector>
+#include <functional>
+#include <GLFW/glfw3.h>
 
 struct VertexPhysics {
     glm::vec3 position;
@@ -14,6 +16,14 @@ struct ModelPhysics {
     glm::vec3 aabbMin, aabbMax;
 };
 
-void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution = 0.0f);
+void updateAllPhysics(
+    std::vector<ModelPhysics>& physicsModels,
+    float dt, float gravity, float groundY,
+    const float restitution[3],
+    std::function<void(ModelPhysics&, float, float, float, float)> updateRigidBody
+);
+void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution);
 void updateAABB(ModelPhysics& model);
 bool checkAABBCollision(const ModelPhysics& a, const ModelPhysics& b);
+void handleCollisions(std::vector<ModelPhysics>& physicsModels, const float restitution[]);
+void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY, float restitution);

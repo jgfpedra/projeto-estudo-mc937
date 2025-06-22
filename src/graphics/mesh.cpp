@@ -1,4 +1,3 @@
-#pragma once
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -6,12 +5,40 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include "core/model.h"
+#include "graphics/shaders.h"
+#include "graphics/light.h"
 
 void drawModel(const ModelData& model, GLuint shaderProgram, const glm::mat4& modelMatrix) {
     GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
     glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(modelMatrix));
     glBindVertexArray(model.VAO);
     glDrawElements(GL_TRIANGLES, model.faces.size(), GL_UNSIGNED_INT, 0);
+}
+
+void drawAllModels(
+    const std::vector<ModelData>& models,
+    GLuint shaderProgram,
+    const std::vector<PhongMaterial>& materials,
+    const PhongLight& light,
+    const glm::vec3& viewPos)
+{
+    for (int i = 0; i < 3; ++i) {
+        setPhongUniforms(shaderProgram, light, materials[i], viewPos);
+        glm::mat4 model = glm::mat4(1.0f);
+        drawModel(models[i], shaderProgram, model);
+    }
+}
+
+void drawGround(
+    const ModelData& groundModelData,
+    GLuint shaderProgram,
+    const PhongLight& light,
+    const glm::vec3& viewPos,
+    float groundY)
+{
+    setPhongUniforms(shaderProgram, light, {glm::vec3(0.8f, 0.8f, 0.7f), 0.1f, 0.0f, 1}, viewPos);
+    glm::mat4 groundModel = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, groundY, 0.0f)), glm::vec3(8.0f, 1.0f, 8.0f));
+    drawModel(groundModelData, shaderProgram, groundModel);
 }
 
 void setupBuffers(GLuint& VAO, GLuint& VBO_vertices, GLuint& VBO_normals, GLuint& EBO, const std::vector<glm::vec3>& vertices, const std::vector<glm::vec3>& normals, const std::vector<unsigned int>& indices) {
