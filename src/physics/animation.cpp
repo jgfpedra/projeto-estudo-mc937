@@ -4,27 +4,6 @@
 #include <limits>
 #include <GLFW/glfw3.h>
 
-float getMinY(const std::vector<VertexPhysics>& vertices) {
-    float minY = std::numeric_limits<float>::max();
-    for (const auto& v : vertices)
-        if (v.position.y < minY) minY = v.position.y;
-    return minY;
-}
-
-void computeCenterAndAvgVel(const std::vector<VertexPhysics>& vertices, glm::vec3& center, glm::vec3& avgVel) {
-    center = avgVel = glm::vec3(0.0f);
-    for (const auto& v : vertices) {
-        center += v.position;
-        avgVel += v.velocity;
-    }
-    center /= (float)vertices.size();
-    avgVel /= (float)vertices.size();
-}
-
-bool isStableOnGround(const glm::vec3& center, const glm::vec3& avgVel, float groundY) {
-    return (fabs(center.y - groundY) < 1e-3) && (glm::length(avgVel) < 0.05f);
-}
-
 void createPhysicsModels(
     const std::vector<ModelData>& models,
     std::vector<ModelPhysics>& physicsModels,
@@ -88,6 +67,7 @@ void rotateModelAroundCenter(ModelPhysics& model) {
 }
 
 void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
+    // Aplica forças e integra movimento para cada vértice
     float windStrength = 1.0f * sin(glfwGetTime());
     glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
     float damping = 0.98f;
@@ -95,8 +75,9 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
         if (v.notFalling) {
+            // Vértice travado: só vento e arrasto
             glm::vec3 force = 5.0f * wind * v.mass;
-            glm::vec3 drag = -dragCoef * v.velocity; // Arrasto do vento
+            glm::vec3 drag = -dragCoef * v.velocity;
             force += drag;
 
             glm::vec3 acceleration = force / v.mass;
@@ -106,6 +87,7 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
             v.position += v.velocity * dt;  
             continue;
         }
+        // Vértice livre: gravidade, vento e arrasto
         glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f);
         bool onGround = (v.position.y <= groundY + 1e-4 && v.velocity.y <= 0.0f);
         if (!onGround) {
@@ -117,6 +99,8 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
         v.velocity += acceleration * dt;
         v.position += v.velocity * dt;
     }
+
+    // Corrige se algum vértice atravessou o chão
     float minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) {
@@ -134,11 +118,15 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
             }
         }
     }
+
+    // Aplica damping na velocidade dos vértices
     for (auto& v : model.vertices) {
         if (!v.fixed) {
             v.velocity *= damping;
         }
     }
+
+    // Atualiza rotação do modelo
     model.rotation += model.angularVelocity * dt;
     model.angularVelocity *= 0.98f;
     bool onGround = (minY <= groundY + 1e-4);
@@ -168,6 +156,7 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
         glm::vec3 toCenter = center - lowestPoint;
         float horizontalOffset = glm::length(glm::vec2(toCenter.x, toCenter.z));
         if (horizontalOffset > 0.01f) {
+            // Aplica torque para deitar o modelo
             float strength = 0.05f;
             model.angularVelocity.x += strength * toCenter.z;
             model.angularVelocity.z -= strength * toCenter.x;
@@ -180,7 +169,7 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
                 glm::vec3 up = glm::normalize(center - lowestPoint);
                 float verticalness = glm::abs(glm::dot(up, glm::vec3(0,1,0)));
                 if (verticalness > 0.7f) {
-                    model.angularVelocity.x += 0.4f; // 5-10x stronger!
+                    model.angularVelocity.x += 0.4f; // torque extra se estiver muito em pé
                     if (glfwGetTime() - int(glfwGetTime()) > 0.5)
                         model.angularVelocity.z += 0.1f;
                     else
@@ -195,6 +184,7 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
             }
             model.rotationLocked = false;
         } else {
+            // Se estiver quase parado, trava rotação
             model.angularVelocity *= 0.5f;
             if (glm::length(model.angularVelocity) < 0.01f) {
                 model.angularVelocity = glm::vec3(0.0f);
@@ -203,9 +193,12 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
         }
     }
 
+    // Aplica rotação se não estiver travada e não tiver vértices fixos
     if (!model.rotationLocked && !hasFixedVertices) {
         rotateModelAroundCenter(model);
     }
+
+    // Atualiza minY após rotação (para uso externo)
     minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) minY = v.position.y;
@@ -271,6 +264,8 @@ void handleCollisions(std::vector<ModelPhysics>& physicsModels) {
 
 void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY, float restitution) {
     if (model.vertices.empty()) return;
+
+    // Calcula médias de velocidade e posição
     glm::vec3 avgVel(0.0f), avgPos(0.0f);
     for (auto& v : model.vertices) {
         avgVel += v.velocity;
@@ -282,11 +277,13 @@ void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY
     float windStrength = 1.0f * sin(glfwGetTime());
     glm::vec3 wind = glm::vec3(0.0f, 0.0f, windStrength);
 
+    // Encontra o menor y dos vértices
     float minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) minY = v.position.y;
     }
 
+    // Verifica se está no chão
     bool onGround = (minY <= groundY + 1e-4 && avgVel.y <= 0.0f);
     if (!onGround) {
         avgVel += wind * dt;
@@ -294,44 +291,43 @@ void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY
     avgVel += glm::vec3(0.0f, -gravity, 0.0f) * dt;
     glm::vec3 proposedPos = avgPos + avgVel * dt;
 
+    // Calcula o menor y da posição proposta
     minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         float y = proposedPos.y + (v.position.y - avgPos.y);
         if (y < minY) minY = y;
     }
 
+    // Corrige se atravessar o chão
     if (minY < groundY) {
         float delta = groundY - minY;
         proposedPos.y += delta;
         avgVel.y *= -restitution;
     }
 
+    // Atualiza posições e velocidades dos vértices
     for (auto& v : model.vertices) {
         v.position += (proposedPos - avgPos);
         v.velocity = avgVel;
     }
     
+    // Damping na velocidade
     float damping = 0.98f;
     for (auto& v : model.vertices) {
         if (!v.fixed) v.velocity *= damping;
     }
 
-    // Atualiza a rotação do modelo
+    // Atualiza rotação e aplica damping na rotação
     model.rotation += model.angularVelocity * dt;
-
-    // Opcional: aplique damping na rotação
     model.angularVelocity *= 0.98f;
 
-    // If on ground, apply natural settling torque (equilibrium-seeking)
+    // Aplica torque para buscar equilíbrio se estiver no chão
     if (onGround && model.applyEquilibriumRotation) {
-        // Calculate center of mass
         glm::vec3 center(0.0f);
-        for (const auto& v : model.vertices) {
-            center += v.position;
-        }
+        for (const auto& v : model.vertices) center += v.position;
         center /= (float)model.vertices.size();
-        
-        // Find lowest point
+
+        // Encontra o ponto mais baixo
         minY = std::numeric_limits<float>::max();
         glm::vec3 lowestPoint(0.0f);
         for (const auto& v : model.vertices) {
@@ -340,64 +336,41 @@ void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY
                 lowestPoint = v.position;
             }
         }
-        
-        // Vector from lowest point to center of mass 
+
+        // Calcula deslocamento horizontal do centro até o ponto mais baixo
         glm::vec3 toCenter = center - lowestPoint;
-        
-        // Horizontal distance between center and lowest point (key for stability)
         float horizontalOffset = glm::length(glm::vec2(toCenter.x, toCenter.z));
-        
-        // Check if we need to rotate to find equilibrium
-        if (horizontalOffset > 0.02f) { // Object is unstable
-            // Moderate torque
+
+        if (horizontalOffset > 0.02f) {
+            // Aplica torque para deitar
             float strength = 0.03f; 
-            
-            // Apply impulse to center mass over contact point
             model.angularVelocity.x += strength * toCenter.z;
             model.angularVelocity.z -= strength * toCenter.x;
-            
-            // Also apply torque to make it lie flat (deitado)
+
+            // Se estiver muito em pé, aplica torque mais forte
             float maxY = -std::numeric_limits<float>::max();
             for (const auto& v : model.vertices) {
                 if (v.position.y > maxY) maxY = v.position.y;
             }
-            
-            // Height variation - higher means less flat
             float heightVariation = maxY - minY;
-
-            // MUCH stronger flattening force when standing up
-            if (heightVariation > 0.3f) { // Lower threshold to detect "em pé" state
-                // Calculate overall orientation vector to see if it's standing vertically
+            if (heightVariation > 0.3f) {
                 glm::vec3 up = glm::normalize(center - lowestPoint);
                 float verticalness = glm::abs(glm::dot(up, glm::vec3(0,1,0)));
-                
-                // If it's very vertical (standing up), apply STRONG corrective force
                 if (verticalness > 0.7f) {
-                    // Apply MUCH stronger flattening torque in both directions
-                    model.angularVelocity.x += 0.2f; // 5-10x stronger!
-                    // Randomly choose direction to avoid getting stuck in symmetrical position
+                    model.angularVelocity.x += 0.2f;
                     if (glfwGetTime() - int(glfwGetTime()) > 0.5)
                         model.angularVelocity.z += 0.1f;
                     else
                         model.angularVelocity.z -= 0.1f;
                 }
                 else {
-                    // Normal flattening for non-vertical states
                     model.angularVelocity.x += 0.05f;
                 }
             }
-
-            // NEVER lock rotation if the torus is standing up
-            if (heightVariation > 0.3f) {
-                model.rotationLocked = false;
-            }
-            
             model.rotationLocked = false;
         } else {
-            // Object is very close to equilibrium, apply strong damping
+            // Se estiver quase parado, trava rotação
             model.angularVelocity *= 0.7f;
-            
-            // When nearly stopped, lock completely
             if (glm::length(model.angularVelocity) < 0.01f) {
                 model.angularVelocity = glm::vec3(0.0f);
                 model.rotationLocked = true;
@@ -405,22 +378,21 @@ void updateRigidBody(ModelPhysics& model, float dt, float gravity, float groundY
         }
     }
 
-    // Make sure rotation is applied only when unlocked
+    // Aplica rotação se não estiver travada
     if (!model.rotationLocked) {
         rotateModelAroundCenter(model);
     }
 
-    // Após rotateModelAroundCenter(model);
+    // Atualiza minY após rotação
     minY = std::numeric_limits<float>::max();
     for (const auto& v : model.vertices) {
         if (v.position.y < minY) minY = v.position.y;
     }
     onGround = (minY <= groundY + 1e-4);
 
-    // Se está no chão, aplique damping extra na rotação
+    // Damping extra na rotação se estiver no chão
     if (onGround) {
-        model.angularVelocity *= 0.90f; // damping mais forte no chão
-        // Se a rotação for muito pequena, zere para parar de vez
+        model.angularVelocity *= 0.90f;
         if (glm::length(model.angularVelocity) < 0.05f) {
             model.angularVelocity = glm::vec3(0.0f);
         }
