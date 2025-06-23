@@ -191,6 +191,35 @@ int main(int argc, char* argv[]) {
 
         glfwSwapBuffers(window);
         glfwPollEvents();
+
+        // ESC para sair
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+            glfwSetWindowShouldClose(window, GLFW_TRUE);
+        }
+
+        // R para reiniciar a simulação
+        if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+            // Recarrega os modelos e reseta a física
+            models.clear();
+            loadAllModels(modelFiles, models);
+
+            // Incline o modelo azul em 30 graus no eixo X novamente
+            float angle = glm::radians(30.0f);
+            glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1,0,0));
+            for (auto& v : models[2].vertices) {
+                v = glm::vec3(rot * glm::vec4(v, 1.0f));
+            }
+
+            physicsModels.clear();
+            createPhysicsModels(models, physicsModels, masses, initialYPositions, initialXPositions, initialZPositions);
+
+            if (!physicsModels[0].vertices.empty())
+                physicsModels[0].applyEquilibriumRotation = false;
+
+            frame = 0;
+            cordaTravada = false;
+            std::system("rm -f model_animations/anim_model*_frame_*.obj");
+        }
     }
     for (auto& m : models) {
         glDeleteVertexArrays(1, &m.VAO);
