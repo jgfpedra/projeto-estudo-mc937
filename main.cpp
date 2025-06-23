@@ -76,6 +76,17 @@ int main(int argc, char* argv[]) {
     if (!physicsModels[0].vertices.empty())
         physicsModels[0].applyEquilibriumRotation = false;
 
+    // fixa o maior vertice do modelo 0
+    float maxY = physicsModels[0].vertices[0].position.y;
+    size_t maxIdx = 0;
+    for (size_t i = 0; i < physicsModels[0].vertices.size(); ++i) {
+        if (physicsModels[0].vertices[i].position.y > maxY) {
+            maxY = physicsModels[0].vertices[i].position.y;
+            maxIdx = i;
+        }
+    }
+    physicsModels[0].vertices[maxIdx].fixed = true;
+
     float gravity = 9.8f;
     float groundY = -2.0f;
     static float lastTime = glfwGetTime();
@@ -168,9 +179,9 @@ int main(int argc, char* argv[]) {
                 minIdx = i;
             }
         }
+        // Quando o modelo cair ate essa altura ira parar de cair
         static bool cordaTravada = false;
         if (!cordaTravada && minY <= -0.5f) {
-            physicsModels[0].vertices[minIdx].fixed = true;
             for (auto& v : physicsModels[0].vertices) {
                 v.notFalling = true;
             }
