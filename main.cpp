@@ -190,7 +190,6 @@ int main(int argc, char* argv[]) {
         // Quando o modelo cair ate essa altura ira parar de cair
         static bool cordaTravada = false;
         if (!cordaTravada && minY <= -0.5f) {
-            physicsModels[0].vertices[minIdx].fixed = true;
             for (auto& v : physicsModels[0].vertices) {
                 v.notFalling = true;
             }
