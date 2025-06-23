@@ -4,9 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
-bool carregarObj(const char* filename, std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals, std::vector<unsigned int>& faces);
-
-bool carregarObj(const char* filename, std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals, std::vector<unsigned int>& faces) {
+bool loadObj(const char* filename, std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& normals, std::vector<unsigned int>& faces) {
     std::vector<glm::vec3> temp_vertices;
     std::vector<glm::vec3> temp_normals;
     std::vector<unsigned int> vertex_indices, normal_indices;
