@@ -106,8 +106,7 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
             v.position += v.velocity * dt;  
             continue;
         }
-
-        glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f); // gravidade
+        glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f);
         bool onGround = (v.position.y <= groundY + 1e-4 && v.velocity.y <= 0.0f);
         if (!onGround) {
             force += wind * v.mass;
@@ -144,7 +143,6 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
     model.angularVelocity *= 0.98f;
     bool onGround = (minY <= groundY + 1e-4);
     
-    // Check if this model has any fixed vertices
     bool hasFixedVertices = false;
     for (const auto& v : model.vertices) {
         if (v.fixed) {
@@ -153,16 +151,12 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
         }
     }
     
-    // Only apply equilibrium-seeking to models without fixed vertices
     if (onGround && !hasFixedVertices) {
-        // Calculate center of mass
         glm::vec3 center(0.0f);
         for (const auto& v : model.vertices) {
             center += v.position;
         }
         center /= (float)model.vertices.size();
-        
-        // Find lowest point
         minY = std::numeric_limits<float>::max();
         glm::vec3 lowestPoint(0.0f);
         for (const auto& v : model.vertices) {
@@ -171,62 +165,37 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
                 lowestPoint = v.position;
             }
         }
-        
-        // Vector from lowest point to center of mass 
         glm::vec3 toCenter = center - lowestPoint;
-        
-        // If center of mass is not directly above the lowest point,
-        // apply torque to rotate toward equilibrium
         float horizontalOffset = glm::length(glm::vec2(toCenter.x, toCenter.z));
         if (horizontalOffset > 0.01f) {
-            // First apply torque to center the mass
-            float strength = 0.05f; // Moderate strength
-            
-            // Calculate appropriate torques for X and Z axes
+            float strength = 0.05f;
             model.angularVelocity.x += strength * toCenter.z;
             model.angularVelocity.z -= strength * toCenter.x;
-            
-            // IMPORTANT: Also apply torque to make it lie flat (deitado)
-            // For a torus, we want to minimize the height variation
             float maxY = -std::numeric_limits<float>::max();
             for (const auto& v : model.vertices) {
                 if (v.position.y > maxY) maxY = v.position.y;
             }
-            
-            // Height variation - higher means less flat
             float heightVariation = maxY - minY;
-
-            // MUCH stronger flattening force when standing up
-            if (heightVariation > 0.3f) { // Lower threshold to detect "em pé" state
-                // Calculate overall orientation vector to see if it's standing vertically
+            if (heightVariation > 0.3f) {
                 glm::vec3 up = glm::normalize(center - lowestPoint);
                 float verticalness = glm::abs(glm::dot(up, glm::vec3(0,1,0)));
-                
-                // If it's very vertical (standing up), apply STRONG corrective force
                 if (verticalness > 0.7f) {
-                    // Apply MUCH stronger flattening torque in both directions
-                    model.angularVelocity.x += 0.2f; // 5-10x stronger!
-                    // Randomly choose direction to avoid getting stuck in symmetrical position
+                    model.angularVelocity.x += 0.4f; // 5-10x stronger!
                     if (glfwGetTime() - int(glfwGetTime()) > 0.5)
                         model.angularVelocity.z += 0.1f;
                     else
                         model.angularVelocity.z -= 0.1f;
                 }
                 else {
-                    // Normal flattening for non-vertical states
                     model.angularVelocity.x += 0.05f;
                 }
             }
-
-            // NEVER lock rotation if the torus is standing up
-            if (heightVariation > 0.3f) {
+            if (heightVariation > 0.4f) {
                 model.rotationLocked = false;
             }
-            
             model.rotationLocked = false;
         } else {
-            // Only lock rotation when truly stable
-            model.angularVelocity *= 0.5f; // Strong damping
+            model.angularVelocity *= 0.5f;
             if (glm::length(model.angularVelocity) < 0.01f) {
                 model.angularVelocity = glm::vec3(0.0f);
                 model.rotationLocked = true;
