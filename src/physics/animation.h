@@ -16,6 +16,10 @@ struct VertexPhysics {
 struct ModelPhysics {
     std::vector<VertexPhysics> vertices;
     glm::vec3 aabbMin, aabbMax;
+    glm::vec3 angularVelocity = glm::vec3(0.0f);
+    glm::vec3 rotation = glm::vec3(0.0f);
+    bool rotationLocked = false;
+    bool applyEquilibriumRotation = true;
 };
 
 void createPhysicsModels(
@@ -23,8 +27,8 @@ void createPhysicsModels(
     std::vector<ModelPhysics>& physicsModels,
     const float masses[3],
     const float initialY[3],
-    const float initialX[3]
-);
+    const float initialX[3],
+    const float initialZ[3]);
 
 void updateAllPhysics(
     std::vector<ModelPhysics>& physicsModels,

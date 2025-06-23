@@ -58,14 +58,23 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    // Incline o modelo azul em 30 graus no eixo X
+    float angle = glm::radians(30.0f);
+    glm::mat4 rot = glm::rotate(glm::mat4(1.0f), angle, glm::vec3(1,0,0));
+    for (auto& v : models[2].vertices) {
+        v = glm::vec3(rot * glm::vec4(v, 1.0f));
+    }
+
     std::vector<ModelPhysics> physicsModels;
     float masses[3] = { 10.0f, 2.0f, 50.0f };
     float initialYPositions[3] = {0.0f, 0.0f, 1.0f};
-    float initialXPositions[3] = {-1.0f, 0.0f, 0.0f};
-    createPhysicsModels(models, physicsModels, masses, initialYPositions, initialXPositions);
+    float initialXPositions[3] = {-1.0f, 0.0f, 0.0f}; // azul deslocado no X e Z
+    float initialZPositions[3] = {0.0f, 0.0f, 0.02f};  // novo array para Z
+
+    createPhysicsModels(models, physicsModels, masses, initialYPositions, initialXPositions, initialZPositions);
 
     if (!physicsModels[0].vertices.empty())
-        physicsModels[0].vertices[0].fixed = true;
+        physicsModels[0].applyEquilibriumRotation = false;
 
     float gravity = 9.8f;
     float groundY = -2.0f;
