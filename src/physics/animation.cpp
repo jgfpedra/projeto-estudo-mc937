@@ -94,7 +94,20 @@ void updatePhysics(ModelPhysics& model, float dt, float gravity, float groundY, 
     float dragCoef = 0.2f;
     for (auto& v : model.vertices) {
         if (v.fixed) continue;
-        glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f);
+        if (v.notFalling) {
+            glm::vec3 force = 5.0f * wind * v.mass;
+            glm::vec3 drag = -dragCoef * v.velocity; // Arrasto do vento
+            force += drag;
+
+            glm::vec3 acceleration = force / v.mass;
+            acceleration[0] = 0;
+            acceleration[1] = 0;
+            v.velocity += acceleration * dt;
+            v.position += v.velocity * dt;  
+            continue;
+        }
+
+        glm::vec3 force = glm::vec3(0.0f, -gravity * v.mass, 0.0f); // gravidade
         bool onGround = (v.position.y <= groundY + 1e-4 && v.velocity.y <= 0.0f);
         if (!onGround) {
             force += wind * v.mass;

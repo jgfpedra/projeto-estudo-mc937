@@ -8,6 +8,7 @@
 struct VertexPhysics {
     glm::vec3 position;
     glm::vec3 velocity;
+    bool notFalling = false;
     bool fixed = false;
     float mass;
 };
