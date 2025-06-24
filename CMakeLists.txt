@@ -11,15 +11,29 @@ find_package(glfw3 3.3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
 
-add_executable(projeto-final main.cpp)
+file(GLOB_RECURSE SOURCES
+    "src/**/*.cpp"
+)
+
+file(GLOB SHADERS
+    "shaders/*.glsl"
+)
+
+add_executable(projeto-final
+    ${SOURCES}
+    main.cpp
+)
 
 INCLUDE_DIRECTORIES( ${OPENGL_INCLUDE_DIR} ${GLFW_INCLUDE_DIRS} )
+include_directories(${CMAKE_SOURCE_DIR}/src)
 
 target_sources(projeto-final
   PRIVATE
     main.cpp
     main.cpp
 )
+
+target_include_directories(projeto-final PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 target_link_libraries(${PROJECT_NAME} OpenGL::GL)
 target_link_libraries(${PROJECT_NAME} glfw)

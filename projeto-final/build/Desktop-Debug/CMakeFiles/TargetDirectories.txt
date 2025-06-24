@@ -1,3 +1,0 @@
-/home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/projeto-final/build/Desktop-Debug/CMakeFiles/projeto-final.dir
-/home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/projeto-final/build/Desktop-Debug/CMakeFiles/edit_cache.dir
-/home/jp/Estudos/Unicamp/MC937/projeto-estudo-mc937/projeto-final/build/Desktop-Debug/CMakeFiles/rebuild_cache.dir
