@@ -53,13 +53,13 @@ int main(int argc, char* argv[]) {
     }
 
     PhongLight light;
-    light.position = glm::vec3(5, 10, 5);
+    light.position = glm::vec3(0, 5, 0);
     light.color = glm::vec3(1, 1, 1);
 
     std::vector<PhongMaterial> materials;
-    materials.push_back({ glm::vec3(1,0,0), 0.1f, 0.5f, 32 });
-    materials.push_back({ glm::vec3(0,1,0), 0.1f, 0.5f, 32 });
-    materials.push_back({ glm::vec3(0,0,1), 0.1f, 0.5f, 32 });
+    materials.push_back({ glm::vec3(1.0f, 0.843f, 0.0f), 0.3f, 0.8f, 64.0f }); // Ouro
+    materials.push_back({ glm::vec3(0.2f, 1.0f, 0.3f), 0.2f, 0.4f, 16.0f }); // Verde
+    materials.push_back({ glm::vec3(0.2f, 0.3f, 1.0f), 0.4f, 0.9f, 128.0f }); // Azul
 
     // Ajuste inicial dos modelos
     for (int i = 0; i < 3; i++) {
@@ -107,17 +107,14 @@ int main(int argc, char* argv[]) {
     groundModelData.vertices.push_back(glm::vec3(0.5f, 0.0f, -0.5f));
     groundModelData.vertices.push_back(glm::vec3(0.5f, 0.0f, 0.5f));
     groundModelData.vertices.push_back(glm::vec3(-0.5f, 0.0f, 0.5f));
-    groundModelData.normals.push_back(glm::vec3(0,1,0));
-    groundModelData.normals.push_back(glm::vec3(0,1,0));
-    groundModelData.normals.push_back(glm::vec3(0,1,0));
-    groundModelData.normals.push_back(glm::vec3(0,1,0));
     groundModelData.faces.push_back(0);
     groundModelData.faces.push_back(1);
     groundModelData.faces.push_back(2);
     groundModelData.faces.push_back(2);
     groundModelData.faces.push_back(3);
     groundModelData.faces.push_back(0);
-
+    recalculateNormals(groundModelData);
+    
     setupBuffers(
         groundModelData.VAO,
         groundModelData.VBO_vertices,
@@ -197,6 +194,14 @@ int main(int argc, char* argv[]) {
         }
 
         updateModelsFromPhysics(models, physicsModels);
+
+        // Recalcula as normais dos objetos apos aplicar a fisica
+        for (auto& model : models) {
+            recalculateNormals(model);
+            setupBuffers(model.VAO, model.VBO_vertices, model.VBO_normals, model.EBO,
+                        model.vertices, model.normals, model.faces);
+        }
+
 
         drawGround(groundModelData, shaderProgram, light, viewPos, groundY);
         drawAllModels(models, shaderProgram, materials, light, viewPos);

@@ -33,7 +33,7 @@ void drawGround(
     const glm::vec3& viewPos,
     float groundY)
 {
-    setPhongUniforms(shaderProgram, light, {glm::vec3(0.8f, 0.8f, 0.7f), 0.1f, 0.0f, 1}, viewPos);
+    setPhongUniforms(shaderProgram, light, {glm::vec3(0.5f, 0.4f, 0.3f), 0.2f, 0.3f, 32.0f}, viewPos);
     glm::mat4 groundModel = glm::scale(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, groundY, 0.0f)), glm::vec3(8.0f, 1.0f, 8.0f));
     drawModel(groundModelData, shaderProgram, groundModel);
 }
@@ -92,4 +92,30 @@ void renderScene(GLuint& shaderProgram, GLuint VAO, GLuint EBO, GLuint facesCoun
 
     glfwSwapBuffers(window);
     glfwPollEvents();
+}
+
+void recalculateNormals(ModelData& model) {
+    model.normals.assign(model.vertices.size(), glm::vec3(0.0f));
+
+    for (size_t i = 0; i < model.faces.size(); i += 3) {
+        unsigned int i0 = model.faces[i];
+        unsigned int i1 = model.faces[i + 1];
+        unsigned int i2 = model.faces[i + 2];
+
+        glm::vec3 v0 = model.vertices[i0];
+        glm::vec3 v1 = model.vertices[i1];
+        glm::vec3 v2 = model.vertices[i2];
+
+        glm::vec3 edge1 = v1 - v0;
+        glm::vec3 edge2 = v2 - v0;
+        glm::vec3 faceNormal = glm::normalize(glm::cross(edge1, edge2));
+
+        model.normals[i0] += faceNormal;
+        model.normals[i1] += faceNormal;
+        model.normals[i2] += faceNormal;
+    }
+
+    for (auto& n : model.normals) {
+        n = glm::normalize(n);
+    }
 }

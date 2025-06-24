@@ -17,7 +17,7 @@ struct PhongMaterial {
     glm::vec3 color;        ///< Cor base do material
     float ambientStrength;  ///< Intensidade do componente ambiente
     float specularStrength; ///< Intensidade do componente especular
-    int shininess;          ///< Brilho (expoente especular)
+    float shininess;          ///< Brilho (expoente especular)
 };
 
 /**

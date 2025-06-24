@@ -66,3 +66,10 @@ void setupBuffers(GLuint& VAO, GLuint& VBO_vertices, GLuint& VBO_normals, GLuint
  * @param window Ponteiro para a janela GLFW.
  */
 void renderScene(GLuint& shaderProgram, GLuint VAO, GLuint EBO, GLuint facesCount, GLFWwindow* window);
+
+/**
+ * @brief Calcula as normais de model
+ * 
+ * @param model Modelo que ira recalcular as normais
+ */
+void recalculateNormals(ModelData& model);

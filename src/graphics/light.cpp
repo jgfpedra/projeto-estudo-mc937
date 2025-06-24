@@ -6,6 +6,6 @@ void setPhongUniforms(GLuint shaderProgram, const PhongLight& light, const Phong
     glUniform3fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, &material.color[0]);
     glUniform1f(glGetUniformLocation(shaderProgram, "ambientStrength"), material.ambientStrength);
     glUniform1f(glGetUniformLocation(shaderProgram, "specularStrength"), material.specularStrength);
-    glUniform1i(glGetUniformLocation(shaderProgram, "shininess"), material.shininess);
+    glUniform1f(glGetUniformLocation(shaderProgram, "shininess"), material.shininess);
     glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, &viewPos[0]);
 }
